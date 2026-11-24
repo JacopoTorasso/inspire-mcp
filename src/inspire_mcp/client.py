@@ -10,7 +10,7 @@ from __future__ import annotations
 import asyncio
 import re
 import time
-from collections import OrderedDict
+from collections import OrderedDict, deque
 from dataclasses import asdict, dataclass, field
 from importlib.metadata import PackageNotFoundError, version
 from typing import Any, Literal
@@ -18,6 +18,8 @@ from typing import Any, Literal
 import httpx
 
 BASE_URL = "https://inspirehep.net/api"
+# INSPIRE allows 15 requests per 5 s per IP address; keep one spare.
+MAX_REQUESTS, PERIOD = 14, 5.0
 try:
     # Read from package metadata, not from __init__, which imports this module.
     _VERSION = version("inspire-mcp")
@@ -241,12 +243,14 @@ class InspireClient:
     def __init__(
         self,
         base_url: str = BASE_URL,
-        min_interval: float = 0.35,
+        min_interval: float = 0.0,
         max_retries: int = 3,
         timeout: float = 20.0,
         transport: httpx.AsyncBaseTransport | None = None,
         cache_ttl: float = 300.0,
         cache_size: int = 512,
+        max_requests: int = MAX_REQUESTS,
+        period: float = PERIOD,
     ) -> None:
         self._http = httpx.AsyncClient(
             base_url=base_url,
@@ -258,6 +262,9 @@ class InspireClient:
         self._max_retries = max_retries
         self._lock = asyncio.Lock()
         self._last_request = 0.0
+        self._max_requests = max_requests
+        self._period = period
+        self._starts: deque[float] = deque()
         self._cache_ttl = cache_ttl
         self._cache_size = cache_size
         self._cache: OrderedDict[str, tuple[float, Any]] = OrderedDict()
@@ -279,17 +286,13 @@ class InspireClient:
             return hit[1]
         for attempt in range(self._max_retries + 1):
             failure: httpx.TransportError | None = None
-            async with self._lock:
-                wait = self._min_interval - (time.monotonic() - self._last_request)
-                if wait > 0:
-                    await asyncio.sleep(wait)
-                self._last_request = time.monotonic()
-                try:
-                    # Export formats (bibtex, latex-eu...) are only served when Accept does not demand JSON.
-                    headers = {"Accept": "*/*"} if "format" in params else None
-                    resp = await self._http.get(path, params=params, headers=headers)
-                except httpx.TransportError as exc:
-                    failure = exc
+            await self._acquire_slot()
+            try:
+                # Export formats (bibtex, latex-eu...) are only served when Accept does not demand JSON.
+                headers = {"Accept": "*/*"} if "format" in params else None
+                resp = await self._http.get(path, params=params, headers=headers)
+            except httpx.TransportError as exc:
+                failure = exc
             if failure is not None:
                 if attempt < self._max_retries:
                     # Back off outside the lock, so other requests are not held up meanwhile.
@@ -307,6 +310,23 @@ class InspireClient:
                 self._cache.popitem(last=False)
             return value
         raise InspireError("INSPIRE API unavailable: retries exhausted")
+
+    async def _acquire_slot(self) -> None:
+        """Wait until a request may start: at most `max_requests` starts per `period` seconds, and at
+        least `min_interval` seconds apart. Only the start is serialised, so requests can overlap."""
+        async with self._lock:
+            while True:
+                now = time.monotonic()
+                while self._starts and now - self._starts[0] >= self._period:
+                    self._starts.popleft()
+                wait = self._min_interval - (now - self._last_request)
+                if self._max_requests > 0 and len(self._starts) >= self._max_requests:
+                    wait = max(wait, self._period - (now - self._starts[0]))
+                if wait <= 0:
+                    break
+                await asyncio.sleep(wait)
+            self._last_request = now
+            self._starts.append(now)
 
     async def _get(self, path: str, params: dict[str, Any]) -> dict[str, Any]:
         return await self._request(path, params)

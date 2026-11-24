@@ -500,8 +500,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--min-interval",
         type=float,
-        default=float(_env("MIN_INTERVAL", "0.35")),
-        help="minimum seconds between requests to INSPIRE, to respect its rate limit",
+        default=float(_env("MIN_INTERVAL", "0")),
+        help="extra minimum seconds between requests to INSPIRE; its limit of 15 requests per 5 s is always kept",
     )
     parser.add_argument(
         "--allowed-hosts",

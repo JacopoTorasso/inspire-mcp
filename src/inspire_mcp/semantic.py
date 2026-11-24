@@ -274,12 +274,16 @@ async def candidates(
     candidates come from the relaxed query restricted to well cited papers, a prior for questions about
     foundational work that relevance ranking alone tends to bury.
     """
-    try:
-        strict_total, strict = await client.search_literature(question, size=min(pool, 25))
-    except InspireError:  # the raw question is not valid INSPIRE syntax, e.g. unbalanced quotes
-        strict_total, strict = 0, []
+
+    async def strict_search() -> tuple[int, list[Paper]]:
+        try:
+            return await client.search_literature(question, size=min(pool, 25))
+        except InspireError:  # the raw question is not valid INSPIRE syntax, e.g. unbalanced quotes
+            return 0, []
+
     relaxed = relaxed_query(question)
-    loose = await _search_or_empty(client, relaxed, pool)
+    # Independent queries: run them together, the client keeps to INSPIRE's rate limit.
+    (strict_total, strict), loose = await asyncio.gather(strict_search(), _search_or_empty(client, relaxed, pool))
     if relaxed and not loose:
         relaxed = relaxed_query(question, quote_all=True)
         loose = await _search_or_empty(client, relaxed, pool)

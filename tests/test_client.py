@@ -1,3 +1,6 @@
+import asyncio
+import time
+
 import httpx
 import pytest
 import respx
@@ -126,3 +129,34 @@ async def test_user_agent_names_project_and_version():
         await client.search_literature("x")
     agent = route.calls.last.request.headers["User-Agent"]
     assert agent == f"inspire-mcp/{__version__} (+https://github.com/JacopoTorasso/inspire-mcp)"
+
+
+class _SlowTransport(httpx.AsyncBaseTransport):
+    """Answers every request after a delay and records start times and peak concurrency."""
+
+    def __init__(self, delay: float) -> None:
+        self.delay, self.starts, self.active, self.peak = delay, [], 0, 0
+
+    async def handle_async_request(self, request):
+        self.starts.append(time.monotonic())
+        self.active += 1
+        self.peak = max(self.peak, self.active)
+        await asyncio.sleep(self.delay)
+        self.active -= 1
+        return httpx.Response(200, json=hits(ATLAS_HIGGS), request=request)
+
+
+async def test_requests_overlap_instead_of_queueing():
+    transport = _SlowTransport(delay=0.2)
+    async with InspireClient(transport=transport, cache_ttl=0) as client:
+        await asyncio.gather(*(client.search_literature(f"q{i}") for i in range(3)))
+    assert transport.peak == 3
+
+
+async def test_rate_window_is_kept():
+    transport = _SlowTransport(delay=0)
+    async with InspireClient(transport=transport, cache_ttl=0, max_requests=2, period=0.3) as client:
+        await asyncio.gather(*(client.search_literature(f"q{i}") for i in range(3)))
+    starts = sorted(transport.starts)
+    assert starts[1] - starts[0] < 0.1
+    assert starts[2] - starts[0] >= 0.3 - 1e-3

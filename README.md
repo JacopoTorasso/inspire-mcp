@@ -186,7 +186,7 @@ Every option is a flag or an environment variable:
 | `INSPIRE_MCP_TRUST_PROXY` | `false` | identify clients by `X-Forwarded-For` behind a trusted proxy |
 | `INSPIRE_MCP_RERANKER` | `auto` | `cross-encoder`, `dense` or `bm25` |
 | `INSPIRE_MCP_CACHE_TTL` | `300` | seconds INSPIRE answers stay cached in memory |
-| `INSPIRE_MCP_MIN_INTERVAL` | `0.35` | seconds between requests to INSPIRE |
+| `INSPIRE_MCP_MIN_INTERVAL` | `0` | extra seconds between requests to INSPIRE (its limit of 15 requests per 5 s is always kept) |
 | `INSPIRE_MCP_CACHE` | `~/.cache/inspire-mcp` | embedding cache |
 | `INSPIRE_MCP_LOG_FORMAT`, `INSPIRE_MCP_LOG_LEVEL` | `text`, `INFO` | `json` for log aggregation |
 
