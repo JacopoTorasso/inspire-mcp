@@ -21,7 +21,7 @@ spec:
         seccompProfile: {type: RuntimeDefault}
       containers:
         - name: inspire-mcp
-          image: ghcr.io/OWNER/inspire-mcp:latest-semantic   # replace OWNER with the GitHub account
+          image: ghcr.io/jacopotorasso/inspire-mcp:latest-semantic
           ports:
             - {name: http, containerPort: 8000}
           env:

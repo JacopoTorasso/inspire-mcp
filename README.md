@@ -1,7 +1,7 @@
 # inspire-mcp
 
-[![ci](https://github.com/OWNER/inspire-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/OWNER/inspire-mcp/actions/workflows/ci.yml)
-[![eval](https://github.com/OWNER/inspire-mcp/actions/workflows/eval.yml/badge.svg)](https://github.com/OWNER/inspire-mcp/actions/workflows/eval.yml)
+[![ci](https://github.com/JacopoTorasso/inspire-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/JacopoTorasso/inspire-mcp/actions/workflows/ci.yml)
+[![eval](https://github.com/JacopoTorasso/inspire-mcp/actions/workflows/eval.yml/badge.svg)](https://github.com/JacopoTorasso/inspire-mcp/actions/workflows/eval.yml)
 [![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 **Ask your AI assistant about high energy physics literature, in plain language.**
@@ -81,7 +81,7 @@ claude mcp add inspire -- uvx --from "inspire-mcp[semantic]" inspire-mcp
 `inspire-mcp config` to print the snippets.
 
 > Until the first release is on PyPI, replace `inspire-mcp[semantic]` with
-> `inspire-mcp[semantic] @ git+https://github.com/OWNER/inspire-mcp`.
+> `inspire-mcp[semantic] @ git+https://github.com/JacopoTorasso/inspire-mcp`.
 
 ## Tools
 
@@ -150,7 +150,7 @@ docker run -p 8000:8000 -e INSPIRE_MCP_ALLOWED_HOSTS=mcp.example.org inspire-mcp
 kubectl apply -f deploy/k8s/deployment.yaml                           # non-root, read-only filesystem, probes
 ```
 
-Release tags publish `ghcr.io/OWNER/inspire-mcp:<version>` (no models, 364 MB) and
+Release tags publish `ghcr.io/jacopotorasso/inspire-mcp:<version>` (no models, 364 MB) and
 `:<version>-semantic` (about 1 GB).
 
 | Endpoint | Purpose |
