@@ -5,9 +5,12 @@ often returns nothing. This module:
 
 1. candidate generation: turns the question into a relaxed INSPIRE query (content words
    joined with OR, plus the strict AND query when it has hits) and takes the top `pool` records;
-2. reranking: scores candidates against the question, with dense embeddings when the
-   optional `fastembed` dependency is installed, or BM25 otherwise;
-3. fusion: combines the reranker order with INSPIRE's own order by reciprocal rank fusion.
+2. reranking: scores candidates against the question with the best reranker available: a
+   cross-encoder that reads the question with each title and abstract, then dense embeddings
+   (both need the optional `fastembed` dependency), then BM25;
+3. fusion: only the weaker rerankers (embeddings, BM25) are combined with INSPIRE's own order by
+   reciprocal rank fusion; the cross-encoder order is used as is, which is the configuration
+   measured in eval/ (see docs/evaluation.md).
 
 No index has to be hosted: the database stays at INSPIRE, only the candidates are embedded,
 and their vectors are cached on disk by record id.
@@ -204,7 +207,7 @@ class CrossEncoderReranker:
 
 
 def default_reranker() -> Reranker:
-    """Best reranker available: cross-encoder, then dense embeddings, then BM25 (see README, Findings)."""
+    """Best reranker available: cross-encoder, then dense embeddings, then BM25 (see docs/evaluation.md)."""
     for factory in (CrossEncoderReranker, DenseReranker):
         try:
             return factory()

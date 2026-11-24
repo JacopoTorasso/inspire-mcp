@@ -2,6 +2,16 @@
 
 All notable changes. Versions follow [semantic versioning](https://semver.org).
 
+## 0.5.3
+
+* Network errors are retried with exponential backoff (1 s, 2 s, 4 s, at most 10 s) instead of
+  immediately; the wait happens outside the request lock, so other requests are not held up.
+* The User-Agent sent to INSPIRE carries the real version and this project's URL, so INSPIRE's
+  administrators can tell who generates the traffic.
+* Evaluation: `eval/abstract_overlap.py` measures how much vocabulary the questions share with the
+  target abstracts; the bias it shows is documented under Limits, and the README now opens with the
+  assistant results and the keyword baseline.
+
 ## 0.5.2
 
 * `inspire-mcp doctor` reported Python 3.10 and 3.11 as unsupported; the minimum now comes from one

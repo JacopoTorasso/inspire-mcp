@@ -21,6 +21,11 @@ Rules for the longtail questions, checked by script before freezing the file:
 so the rule can be verified on every run. The famous set was written before the rule existed and
 does not follow it.
 
+The rule does not cover the abstract, which the questions were written from and the reranker reads.
+`abstract_overlap.py` measures, from the cached candidate pools, how much vocabulary each question
+shares with its target abstract against the other candidates; the result is under Limits in
+[`docs/evaluation.md`](../docs/evaluation.md).
+
 ## Held-out set
 
 `queries_heldout.jsonl`: 40 more long-tail papers (`sample_longtail.py --seed 2027 --exclude` the

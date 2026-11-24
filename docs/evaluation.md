@@ -155,6 +155,13 @@ gain was noise, so the default stays MiniLM-L6, which is twice as fast. Two less
 
 * One author wrote all questions knowing the targets; 37% of the famous-set questions repeat three
   consecutive title words (written before the rule existed), against 0% for the longtail set.
+* Longtail and held-out questions were written from the abstract, which is also the text the reranker
+  reads, so they share its vocabulary more than a user describing a paper from memory would. On
+  average 75% of a question's content words appear in the target abstract, against 47% for the other
+  candidates, and counting shared words alone puts the target first for 13 to 21 of 40 questions on
+  the development set and 13 to 18 on the held-out set, depending on ties, against 28 and 24 for the
+  cross-encoder (`eval/abstract_overlap.py`). Real-world accuracy is therefore likely lower than
+  measured here.
 * 40 to 60 questions per set give wide intervals; only large differences are significant.
 * Known-item search measures finding one paper, not topical recall or answer quality.
 * The cross-encoder is a general web-search model (MS MARCO), not trained on physics.

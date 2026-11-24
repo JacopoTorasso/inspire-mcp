@@ -10,9 +10,10 @@
 
 inspire-mcp connects assistants such as Claude to [INSPIRE-HEP](https://inspirehep.net), the database
 of high energy physics papers, authors, conferences and jobs. Describe the paper you are looking for
-in your own words. On 40 random papers set aside before any measurement, the server puts the right one
-first 60% of the time on its own and 85% when Claude drives it, against 12% for the same question typed
-into INSPIRE's search box ([how this is measured](docs/evaluation.md)).
+in your own words. On 40 random papers set aside before any measurement, Claude with the server puts
+the right one first 85% of the time, against 62% when it searches INSPIRE by itself, and needs under a
+third of the searches. Without an assistant the server gets 60%, against 40% for INSPIRE's own ranking
+of the question's keywords ([how this is measured](docs/evaluation.md)).
 
 ## What you can ask
 
@@ -130,7 +131,12 @@ choice; the **held-out** set was frozen beforehand and used only to confirm, so 
 
 With the server, an assistant finds the paper far more often and with fewer searches: Claude Sonnet 5.5
 needs 1.3 to 1.5 searches per question instead of 5 to 6, and the small Claude Haiku 5.5 with the
-server does better than Claude Sonnet 5.5 without it.
+server does better than Claude Sonnet 5.5 without it. On the held-out set the server alone (60%) is
+level with Claude Sonnet 5.5 searching by itself (62%): the large gain comes from using them together.
+
+The questions were written from the papers' abstracts, which is also the text the server's reranker
+reads, so these figures are likely an upper bound for questions written from memory
+([limits](docs/evaluation.md#limits)).
 
 A second benchmark of 60 famous papers, the significance tests and the design choices that were
 tried and rejected are in [docs/evaluation.md](docs/evaluation.md).

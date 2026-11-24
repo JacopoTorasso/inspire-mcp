@@ -1,6 +1,6 @@
 """INSPIRE-HEP MCP server."""
 
-__version__ = "0.5.2"
+__version__ = "0.5.3"
 
 from .client import Author, InspireClient, InspireError, Paper  # noqa: E402
 from .server import build_server  # noqa: E402

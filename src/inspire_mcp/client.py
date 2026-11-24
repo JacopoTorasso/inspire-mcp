@@ -12,12 +12,18 @@ import re
 import time
 from collections import OrderedDict
 from dataclasses import asdict, dataclass, field
+from importlib.metadata import PackageNotFoundError, version
 from typing import Any, Literal
 
 import httpx
 
 BASE_URL = "https://inspirehep.net/api"
-USER_AGENT = "inspire-mcp/0.1 (+https://github.com/inspirehep/rest-api-doc)"
+try:
+    # Read from package metadata, not from __init__, which imports this module.
+    _VERSION = version("inspire-mcp")
+except PackageNotFoundError:  # running from a source tree without installing
+    _VERSION = "unknown"
+USER_AGENT = f"inspire-mcp/{_VERSION} (+https://github.com/JacopoTorasso/inspire-mcp)"
 
 LITERATURE_FIELDS = ",".join(
     [
@@ -272,6 +278,7 @@ class InspireClient:
             self._cache.move_to_end(key)
             return hit[1]
         for attempt in range(self._max_retries + 1):
+            failure: httpx.TransportError | None = None
             async with self._lock:
                 wait = self._min_interval - (time.monotonic() - self._last_request)
                 if wait > 0:
@@ -282,9 +289,13 @@ class InspireClient:
                     headers = {"Accept": "*/*"} if "format" in params else None
                     resp = await self._http.get(path, params=params, headers=headers)
                 except httpx.TransportError as exc:
-                    if attempt < self._max_retries:
-                        continue
-                    raise InspireError(f"INSPIRE API unreachable: {exc.__class__.__name__}") from exc
+                    failure = exc
+            if failure is not None:
+                if attempt < self._max_retries:
+                    # Back off outside the lock, so other requests are not held up meanwhile.
+                    await asyncio.sleep(_backoff(attempt))
+                    continue
+                raise InspireError(f"INSPIRE API unreachable: {failure.__class__.__name__}") from failure
             if resp.status_code in (429, 502, 503, 504) and attempt < self._max_retries:
                 await asyncio.sleep(_retry_after(resp, attempt))
                 continue
@@ -401,4 +412,8 @@ def _retry_after(resp: httpx.Response, attempt: int) -> float:
             return max(0.5, min(value - time.time() if value > 1e9 else value, 30.0))
         except ValueError:
             pass
+    return _backoff(attempt)
+
+
+def _backoff(attempt: int) -> float:
     return min(2.0**attempt, 10.0)

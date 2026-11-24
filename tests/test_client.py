@@ -83,3 +83,46 @@ async def test_citing_papers_uses_refersto():
     async with InspireClient(min_interval=0) as client:
         total, _ = await client.citing_papers(1124337, size=2)
     assert route.calls.last.request.url.params["q"] == "refersto:recid:1124337" and total == 17848
+
+
+@respx.mock
+async def test_transport_errors_back_off_outside_the_lock(monkeypatch):
+    respx.get(f"{BASE_URL}/literature").mock(
+        side_effect=[
+            httpx.ConnectError("down"),
+            httpx.ConnectError("down"),
+            httpx.Response(200, json=hits(ATLAS_HIGGS)),
+        ]
+    )
+    async with InspireClient(min_interval=0) as client:
+        backoffs = []
+
+        def fake_backoff(attempt):
+            backoffs.append((attempt, client._lock.locked()))
+            return 0
+
+        monkeypatch.setattr("inspire_mcp.client._backoff", fake_backoff)
+        _, papers = await client.search_literature("x")
+    assert len(papers) == 1
+    assert backoffs == [(0, False), (1, False)]
+
+
+@respx.mock
+async def test_transport_errors_exhaust_retries(monkeypatch):
+    monkeypatch.setattr("inspire_mcp.client._backoff", lambda attempt: 0)
+    route = respx.get(f"{BASE_URL}/literature").mock(side_effect=httpx.ConnectError("down"))
+    async with InspireClient(min_interval=0, max_retries=2) as client:
+        with pytest.raises(InspireError, match="unreachable: ConnectError"):
+            await client.search_literature("x")
+    assert route.call_count == 3
+
+
+@respx.mock
+async def test_user_agent_names_project_and_version():
+    from inspire_mcp import __version__
+
+    route = respx.get(f"{BASE_URL}/literature").mock(return_value=httpx.Response(200, json=hits(ATLAS_HIGGS)))
+    async with InspireClient(min_interval=0) as client:
+        await client.search_literature("x")
+    agent = route.calls.last.request.headers["User-Agent"]
+    assert agent == f"inspire-mcp/{__version__} (+https://github.com/JacopoTorasso/inspire-mcp)"
