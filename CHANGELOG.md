@@ -18,6 +18,8 @@ Broader coverage and easier to try.
 * Upcoming events with a keyword are filtered by date on the server side: INSPIRE combines free text
   and date ranges unreliably.
 * README rewritten for first-time users.
+* Agentic baseline (`eval/agent_eval.py`): with semantic_search, Claude Sonnet 5.5 finds the right paper
+  first 85% of the time instead of 60% with INSPIRE search alone, in 1.3 tool calls instead of 5.8.
 
 ## 0.4.0
 

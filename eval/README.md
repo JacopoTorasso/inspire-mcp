@@ -21,6 +21,14 @@ Rules for the longtail questions, checked by script before freezing the file:
 so the rule can be verified on every run. The famous set was written before the rule existed and
 does not follow it.
 
+## Agentic baseline
+
+`agent_eval.py` runs the same questions through an LLM agent (Claude API, model chosen with `--model`)
+with INSPIRE search only, and with semantic_search added; `--limit N` runs a pilot on N questions per
+set first, to measure cost. The API key is read from `~/.config/inspire-mcp/anthropic_key` (or
+`INSPIRE_EVAL_KEY_FILE`) and passed to the client explicitly. Server-side model fallback is off on
+purpose: a silent switch to another model would change what is measured; refusals are recorded.
+
 ## Metrics and statistics
 
 * Recall at 1, 5 and 10, and MRR@10 (reciprocal rank of the target, 0 when outside the top 10).

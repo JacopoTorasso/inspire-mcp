@@ -123,6 +123,15 @@ repeat its title:
 | Keywords of the question, INSPIRE's ranking | 38% | 72% |
 | **inspire-mcp** (keywords, then a cross-encoder re-reads every abstract) | **70%** | **85%** |
 
+And when an AI assistant drives the search itself, the server still matters:
+
+| Assistant, same 40 papers | Right paper first | Searches per question |
+|---|---|---|
+| Claude Sonnet 5.5 with INSPIRE search only | 60% | 5.8 |
+| **Claude Sonnet 5.5 with inspire-mcp's semantic search** | **85%** | 1.3 |
+| Claude Haiku 5.5 with INSPIRE search only | 55% | 8.2 |
+| **Claude Haiku 5.5 with inspire-mcp's semantic search** | **80%** | 2.7 |
+
 A second benchmark of 60 famous papers, the significance tests and the design choices that were
 tried and rejected are in [docs/evaluation.md](docs/evaluation.md).
 

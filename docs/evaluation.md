@@ -39,6 +39,42 @@ Share of questions whose paper is among the 50 candidates:
 Median reranking time for 50 new candidates on a laptop CPU: 2.6 to 2.8 s for the cross-encoder,
 3.3 s for embeddings (46 ms when their vectors are already cached).
 
+## Agentic baseline: does a capable LLM need semantic_search?
+
+An assistant is not a naive user: it knows INSPIRE syntax and can reformulate. `eval/agent_eval.py` runs
+the same 100 questions through an agent loop (effort `medium`, at most 8 turns, final answer through a
+`submit_ranking` tool) in two arms: **A**, the agent has only `search_literature`; **B**, it also has
+`semantic_search`. Single-call `semantic_search` without any LLM is the reference.
+
+Longtail set (40 randomly sampled papers):
+
+| system | MRR@10 [95% CI] | right paper first | tool calls per question | cost per question |
+|---|---|---|---|---|
+| `semantic_search`, one call, no LLM | 0.76 [0.63, 0.87] | 70% | 1 | none |
+| Claude Sonnet 5.5, INSPIRE search only | 0.60 [0.45, 0.75] | 60% | 5.8 (9 of 40 ran out of turns) | $0.016 |
+| **Claude Sonnet 5.5 + semantic_search** | **0.86** [0.75, 0.95] | **85%** | 1.3 | $0.010 |
+| Claude Haiku 5.5, INSPIRE search only | 0.56 [0.40, 0.71] | 55% | 8.2 | $0.0016 |
+| **Claude Haiku 5.5 + semantic_search** | **0.83** [0.72, 0.93] | **80%** | 2.7 | $0.0008 |
+
+Costs at Anthropic list prices of November 2026; the whole run cost $2.05.
+
+* **semantic_search makes both agents better, faster and cheaper**: MRR up 0.26 for Sonnet and 0.27 for
+  Haiku (p < 0.001 for both), with four to five times fewer tool calls.
+* **A small model with the tool beats a large model without it**: Haiku with semantic_search (0.83)
+  is well above Sonnet with INSPIRE search alone (0.60), at a twentieth of the cost per question.
+* **An agent searching alone does worse than the tool alone** (0.60 and 0.56 against 0.76). The
+  transcripts show why: the agent looks for the description's words in titles (`t homotopy and t
+  L-infinity and t string`) and keeps reformulating the same way, while the real titles share no word
+  with the description ("Higher Structures in M-Theory"). semantic_search reads the abstracts.
+* With the tool, the agent adds a modest gain over the tool alone (Sonnet 0.86 against 0.76, p = 0.03):
+  it can read the candidates and check them against the question.
+
+On the famous set every agent configuration finds the paper almost always (MRR 0.99 to 1.00, against
+0.30 for single-call semantic_search), because the model remembers these papers and searches for their
+authors or titles directly. That measures the model's memory, not retrieval, so the longtail set is the
+one that answers the question. The longtail questions avoid title words by design, which penalises
+title searches; it is also the situation of a user who does not know the title.
+
 ## Offline: fixed corpus of every INSPIRE record with 1500+ citations (1396 papers, famous set)
 
 | system | R@1 | R@10 | MRR@10 [95% CI] |
@@ -80,6 +116,5 @@ Median reranking time for 50 new candidates on a laptop CPU: 2.6 to 2.8 s for th
 
 ## Next steps
 
-* An LLM baseline that writes INSPIRE syntax through the MCP tools, scored with this same harness.
 * Questions from real usage logs, and a larger longtail set to narrow the intervals.
 * Physics-tuned rerankers compared on quality, latency and memory.
