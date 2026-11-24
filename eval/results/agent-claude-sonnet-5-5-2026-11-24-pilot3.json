@@ -1,0 +1,408 @@
+{
+  "date": "2026-11-24",
+  "model": "claude-sonnet-5-5",
+  "effort": "medium",
+  "max_turns": 8,
+  "prices_usd_per_mtok": {
+    "input": 2.0,
+    "output": 10.0,
+    "cache_read": 0.1,
+    "cache_write": 2.5
+  },
+  "sets": {
+    "famous": {
+      "n": 3,
+      "summary": {
+        "single_call": {
+          "R@1": 0.333,
+          "R@5": 0.333,
+          "R@10": 0.333,
+          "MRR@10": 0.333,
+          "MRR@10_ci95": [
+            0.0,
+            1.0
+          ]
+        },
+        "agent_A": {
+          "R@1": 1.0,
+          "R@5": 1.0,
+          "R@10": 1.0,
+          "MRR@10": 1.0,
+          "MRR@10_ci95": [
+            1.0,
+            1.0
+          ],
+          "mean_tool_calls": 2.33,
+          "mean_cost_usd": 0.00886,
+          "median_latency_s": 6.9,
+          "outcomes": {
+            "submitted": 3
+          }
+        },
+        "agent_B": {
+          "R@1": 1.0,
+          "R@5": 1.0,
+          "R@10": 1.0,
+          "MRR@10": 1.0,
+          "MRR@10_ci95": [
+            1.0,
+            1.0
+          ],
+          "mean_tool_calls": 1.33,
+          "mean_cost_usd": 0.00876,
+          "median_latency_s": 8.4,
+          "outcomes": {
+            "submitted": 3
+          }
+        }
+      },
+      "paired_permutation_p_mrr": {
+        "agent_B vs agent_A": 1.0,
+        "agent_A vs single_call": 0.5039,
+        "agent_B vs single_call": 0.4855
+      },
+      "per_query": [
+        {
+          "id": "q17",
+          "gold": 1382595,
+          "A": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "query": "cn LHCb and t pentaquark Lambda_b J/psi K p",
+                "size": 10,
+                "sort": "mostcited"
+              },
+              {
+                "query": "cn LHCb and t observation of J/psi p resonances consistent with pentaquark states",
+                "size": 10,
+                "sort": "mostcited"
+              },
+              {
+                "query": "t pentaquark Lambda_b J/psi p LHCb observation",
+                "size": 10,
+                "sort": "mostcited"
+              },
+              {
+                "query": "t observation of J/psi p resonances pentaquark",
+                "size": 10,
+                "sort": "mostcited"
+              },
+              {
+                "query": "pentaquark LHCb Lambda_b",
+                "size": 10,
+                "sort": "mostcited"
+              }
+            ],
+            "cost_usd": 0.01594
+          },
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "query": "cn LHCb and t pentaquark Lambda_b J/psi K p",
+                "size": 10,
+                "sort": "mostcited"
+              },
+              {
+                "query": "cn LHCb and t pentaquark",
+                "size": 15,
+                "sort": "mostcited"
+              }
+            ],
+            "cost_usd": 0.01017
+          }
+        },
+        {
+          "id": "q19",
+          "gold": 393570,
+          "A": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "query": "t string theory dynamics in various dimensions OR t strong coupling superstring dualities eleven dimensional supergravity",
+                "size": 10,
+                "sort": "mostcited"
+              }
+            ],
+            "cost_usd": 0.00585
+          },
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "question": "strong coupling dualities relating different superstring theories and eleven dimensional supergravity",
+                "prefer_influential": true
+              }
+            ],
+            "cost_usd": 0.01084
+          }
+        },
+        {
+          "id": "q44",
+          "gold": 1343079,
+          "A": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "query": "t Planck 2015 results. XIII. Cosmological parameters",
+                "size": 5,
+                "sort": "mostcited"
+              }
+            ],
+            "cost_usd": 0.00479
+          },
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "query": "t Planck 2015 results. XIII. Cosmological parameters",
+                "size": 5,
+                "sort": "mostcited"
+              }
+            ],
+            "cost_usd": 0.00528
+          }
+        }
+      ]
+    },
+    "longtail": {
+      "n": 3,
+      "summary": {
+        "single_call": {
+          "R@1": 0.333,
+          "R@5": 1.0,
+          "R@10": 1.0,
+          "MRR@10": 0.556,
+          "MRR@10_ci95": [
+            0.333,
+            1.0
+          ]
+        },
+        "agent_A": {
+          "R@1": 0.667,
+          "R@5": 0.667,
+          "R@10": 0.667,
+          "MRR@10": 0.667,
+          "MRR@10_ci95": [
+            0.0,
+            1.0
+          ],
+          "mean_tool_calls": 6.67,
+          "mean_cost_usd": 0.01915,
+          "median_latency_s": 15.7,
+          "outcomes": {
+            "submitted": 2,
+            "turn_limit": 1
+          }
+        },
+        "agent_B": {
+          "R@1": 0.667,
+          "R@5": 1.0,
+          "R@10": 1.0,
+          "MRR@10": 0.833,
+          "MRR@10_ci95": [
+            0.5,
+            1.0
+          ],
+          "mean_tool_calls": 1.67,
+          "mean_cost_usd": 0.01119,
+          "median_latency_s": 7.9,
+          "outcomes": {
+            "submitted": 3
+          }
+        }
+      },
+      "paired_permutation_p_mrr": {
+        "agent_B vs agent_A": 1.0,
+        "agent_A vs single_call": 1.0,
+        "agent_B vs single_call": 0.5041
+      },
+      "per_query": [
+        {
+          "id": "l12",
+          "gold": 1863059,
+          "A": {
+            "rank": null,
+            "outcome": "turn_limit",
+            "queries": [
+              {
+                "query": "t early time expansion glasma gluon field proper time color glass condensate",
+                "size": 10,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "t glasma initial conditions expansion in proper time classical Yang-Mills fields after collision",
+                "size": 10,
+                "sort": "mostcited"
+              },
+              {
+                "query": "t early time glasma fields expansion",
+                "size": 10,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "t color glass condensate gluon field proper time expansion",
+                "size": 10,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "glasma early time expansion",
+                "size": 10,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "a Carrington glasma proper time expansion colour glass condensate",
+                "size": 10,
+                "sort": "mostrecent"
+              },
+              {
+                "query": "a Carrington and glasma",
+                "size": 15,
+                "sort": "mostcited"
+              },
+              {
+                "query": "Carrington Mrówczyński Pickering glasma",
+                "size": 15,
+                "sort": "mostcited"
+              },
+              {
+                "query": "glasma proper time expansion Carrington",
+                "size": 15,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "Carrington Mrowczynski early time gluon field heavy-ion collision expansion energy-momentum",
+                "size": 10,
+                "sort": "bestmatch"
+              }
+            ],
+            "cost_usd": 0.02829
+          },
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "question": "early time expansion of the color glass condensate gluon field right after a heavy ion collision",
+                "prefer_influential": false
+              },
+              {
+                "query": "a Carrington Mrowczynski Pickering and Ipp or t \"early time\" glasma expansion proper time colour glass condensate",
+                "size": 8,
+                "sort": "mostrecent"
+              },
+              {
+                "query": "a Carrington and a Pickering and t glasma",
+                "size": 8,
+                "sort": "mostrecent"
+              }
+            ],
+            "cost_usd": 0.01472
+          }
+        },
+        {
+          "id": "l15",
+          "gold": 1683162,
+          "A": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "query": "seismometer array Newtonian noise Hanford subtraction gravity gradient",
+                "size": 10,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "t Newtonian noise seismic array LIGO Hanford",
+                "size": 10,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "t gravity gradient noise seismometer array cancellation",
+                "size": 10,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "Newtonian noise seismometer array",
+                "size": 10,
+                "sort": "bestmatch"
+              }
+            ],
+            "cost_usd": 0.01471
+          },
+          "B": {
+            "rank": 2,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "question": "seismometer array at Hanford to subtract gravity gradient (Newtonian) noise in gravitational wave detectors",
+                "prefer_influential": false
+              }
+            ],
+            "cost_usd": 0.00983
+          }
+        },
+        {
+          "id": "l10",
+          "gold": 1364873,
+          "A": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "query": "t wormholes geodesically complete black hole electric field singularity",
+                "size": 10,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "electric field wormhole geodesic completeness curvature singularity black hole Einstein-Maxwell",
+                "size": 10,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "t geodesically complete wormholes electric field",
+                "size": 10,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "t black hole singularity wormhole geodesic completeness charged",
+                "size": 10,
+                "sort": "mostrecent"
+              },
+              {
+                "query": "t geodesically complete black holes wormholes",
+                "size": 10,
+                "sort": "mostrecent"
+              },
+              {
+                "query": "geodesic completeness wormhole electric black hole",
+                "size": 10,
+                "sort": "mostrecent"
+              }
+            ],
+            "cost_usd": 0.01445
+          },
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "question": "electric field wormholes making black hole spacetimes geodesically complete despite curvature singularities",
+                "prefer_influential": false
+              }
+            ],
+            "cost_usd": 0.00901
+          }
+        }
+      ]
+    }
+  },
+  "total_cost_usd": 0.1439
+}
