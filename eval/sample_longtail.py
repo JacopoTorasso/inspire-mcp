@@ -5,6 +5,7 @@ with an arXiv id and an abstract of at least 400 characters. Prints them as JSON
 questions in queries_longtail.jsonl were written from this output.
 """
 
+import argparse
 import asyncio
 import json
 import random
@@ -19,12 +20,30 @@ SEED, N, PAGE_SIZE, MAX_PAGE = 2026, 40, 25, 400
 
 
 async def main() -> None:
-    rng = random.Random(SEED)
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--seed", type=int, default=SEED)
+    parser.add_argument("--exclude", nargs="*", default=[], help="query files whose papers must not be sampled")
+    args = parser.parse_args()
+    excluded = {
+        json.loads(line)["arxiv"]
+        for path in args.exclude
+        for line in Path(path).read_text().splitlines()
+        if line.strip()
+    }
+    rng = random.Random(args.seed)
     picked: dict[int, dict] = {}
     async with InspireClient() as client:
         while len(picked) < N:
             _, papers = await client.search_literature(SAMPLE_QUERY, size=PAGE_SIZE, page=rng.randint(1, MAX_PAGE))
-            ok = [p for p in papers if p.arxiv_id and p.abstract and len(p.abstract) >= 400 and p.recid not in picked]
+            ok = [
+                p
+                for p in papers
+                if p.arxiv_id
+                and p.abstract
+                and len(p.abstract) >= 400
+                and p.recid not in picked
+                and p.arxiv_id not in excluded
+            ]
             if ok:
                 p = rng.choice(ok)
                 picked[p.recid] = {

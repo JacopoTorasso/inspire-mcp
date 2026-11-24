@@ -51,6 +51,8 @@ HERE = Path(__file__).parent
 CACHE = HERE / "cache"
 RESULTS = HERE / "results"
 QUERY_SETS = {"famous": "queries.jsonl", "longtail": "queries_longtail.jsonl"}
+# Held out: used once, to confirm a choice made on the sets above (see eval/README.md).
+HELDOUT_SETS = {"heldout": "queries_heldout.jsonl"}
 CORPUS_QUERY = "topcite 1500+"
 KS = (1, 5, 10)
 BOOTSTRAP = 2000
@@ -124,7 +126,7 @@ def title_overlap(query: str, title: str, n: int = 3) -> bool:
 
 
 def load_queries(name: str) -> list[dict]:
-    path = HERE / QUERY_SETS[name]
+    path = HERE / {**QUERY_SETS, **HELDOUT_SETS}[name]
     return [json.loads(line) for line in path.read_text().splitlines() if line.strip()]
 
 
