@@ -55,7 +55,7 @@ def main() -> None:
             ce = [xenc.get(f"{XENC}|{q['id']}|{p['recid']}") for p in q["pool"][:50]]
             first = None
             if q["recid"] in [p["recid"] for p in q["pool"][:50]] and None not in ce:
-                best = max(zip(ce, (p["recid"] for p in q["pool"][:50])))[1]
+                best = max(zip(ce, (p["recid"] for p in q["pool"][:50]), strict=True))[1]
                 first = best == q["recid"]
             bands.setdefault(name, []).append((t, first))
         n = len(questions)
