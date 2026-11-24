@@ -6,9 +6,15 @@ a real user's question than questions written from the abstract (see Limits in d
 For each sampled target (same population as the longtail set, new seed, development papers excluded):
 1. a few citing papers with an arXiv id and no author in common with the target (no self-citations);
 2. their LaTeX source from arXiv, read in memory (never extracted to disk), one download every 3 s;
-3. citation keys of the target: its INSPIRE texkeys, plus any \\bibitem whose entry names its arXiv id;
+3. citation keys of the target: its INSPIRE texkeys, any \\bibitem whose entry names its arXiv id, and the
+   \\bibitem at the position of INSPIRE's reference label ([12] is the 12th), accepted only when its entry
+   names one of the first authors or the collaboration;
 4. the sentence around each \\cite of those keys, kept only when it cites nothing else, names no author
-   of the target, repeats no three consecutive title words and has at least 8 content words.
+   of the target, repeats no three consecutive title words, has at most two formulas and at least 8
+   content words.
+
+The output keeps each sentence twice: `query`, the sentence without the citation, and `context`, with
+[CITED] where the target was cited, for judge_contexts.py.
 
 Sentences come from arXiv papers under various licences, so only this script is versioned: the output and
 the downloaded sources stay in eval/cache/ (git-ignored).
@@ -50,6 +56,7 @@ ARXIV_DELAY = 3.0
 MAX_SOURCE_BYTES = 40_000_000
 MIN_CONTENT_WORDS = 8
 MAX_WORDS = 60
+MAX_FORMULAS = 2
 
 CITE = re.compile(r"\\(?:[a-zA-Z]*cite[a-zA-Z]*)\*?(?:\[[^\]]*\]){0,2}\{([^}]*)\}")
 BIBITEM = re.compile(r"\\bibitem(?:\[[^\]]*\])?\{([^}]*)\}(.*?)(?=\\bibitem|\\end\{thebibliography\}|\Z)", re.S)
@@ -58,7 +65,7 @@ MATH = re.compile(r"\$\$.*?\$\$|\$[^$]*\$|\\\(.*?\\\)|\\\[.*?\\\]", re.S)
 ENVS = re.compile(r"\\begin\{(equation|align|eqnarray|figure|table|multline|gather)\*?\}.*?\\end\{\1\*?\}", re.S)
 COMMANDS = re.compile(r"\\(?:ref|eqref|label|footnote|url|href)\*?\{[^}]*\}")
 MARKUP = re.compile(r"\\(?:emph|textit|textbf|textrm|mathrm|it|bf|em)\b\s*")
-SENTENCE_END = re.compile(r"(?<=[a-z0-9\)\]])\.\s+(?=[A-Z\\])|\n\s*\n|\\(?:sub)*section\*?\{[^}]*\}|\\item\b")
+SENTENCE_END = re.compile(r"(?<=[a-z0-9\)\]\}\$])\.\s+(?=[A-Z\\])|\n\s*\n|\\(?:sub)*section\*?\{[^}]*\}|\\item\b")
 
 
 # ---------- INSPIRE ----------
@@ -75,7 +82,7 @@ async def sample_targets(client: InspireClient, n: int, seed: int, excluded: set
                 "size": PAGE_SIZE,
                 "page": rng.randint(1, MAX_PAGE),
                 "fields": "control_number,titles.title,abstracts.value,arxiv_eprints.value,texkeys,"
-                "authors.last_name,author_count",
+                "authors.last_name,author_count,collaborations.value",
             },
         )
         ok = []
@@ -94,27 +101,39 @@ async def sample_targets(client: InspireClient, n: int, seed: int, excluded: set
                 "abstract": m["abstracts"][0]["value"],
                 "texkeys": m.get("texkeys", []),
                 "authors": sorted({a["last_name"] for a in m.get("authors", []) if a.get("last_name")}),
+                "first_authors": [a["last_name"] for a in m.get("authors", [])[:3] if a.get("last_name")],
+                "collaborations": [c["value"] for c in m.get("collaborations", [])],
             }
     return list(picked.values())
 
 
-async def citing_papers(client: InspireClient, target: dict, k: int, rng: random.Random) -> list[str]:
+async def citing_papers(
+    client: InspireClient, target: dict, k: int, rng: random.Random
+) -> list[tuple[str, str | None]]:
+    """arXiv ids of citing papers without a common author, with the label of their reference to the target."""
     data = await client._get(
         "/literature",
         {
             "q": f"refersto:recid:{target['recid']}",
             "size": 50,
-            "fields": "control_number,arxiv_eprints.value,authors.last_name",
+            "fields": "control_number,arxiv_eprints.value,authors.last_name,references.record,"
+            "references.reference.label",
         },
     )
     authors = {a.lower() for a in target["authors"]}
+    suffix = f"/literature/{target['recid']}"
     ids = []
     for h in data["hits"]["hits"]:
         m = h["metadata"]
         arxiv = (m.get("arxiv_eprints") or [{}])[0].get("value")
         theirs = {a.get("last_name", "").lower() for a in m.get("authors", [])}
         if arxiv and not (authors & theirs):
-            ids.append(arxiv)
+            labels = [
+                r.get("reference", {}).get("label")
+                for r in m.get("references", [])
+                if r.get("record", {}).get("$ref", "").endswith(suffix)
+            ]
+            ids.append((arxiv, next((lb for lb in labels if lb), None)))
     rng.shuffle(ids)
     return ids[: k * 2]  # some have no LaTeX source or no usable sentence
 
@@ -161,13 +180,26 @@ def latex_texts(blob: bytes) -> list[str]:
 # ---------- sentences ----------
 
 
-def target_keys(texts: list[str], target: dict) -> set[str]:
+def target_keys(texts: list[str], target: dict, label: str | None, stats: Counter) -> set[str]:
     keys = set(target["texkeys"])
     bare = target["arxiv"]
-    for text in texts:
-        for key, body in BIBITEM.findall(text):
+    lists = [BIBITEM.findall(text) for text in texts]
+    for items in lists:
+        for key, body in items:
             if bare in body or any(k in body for k in target["texkeys"]):
                 keys.add(key.strip())
+    if label and label.isdigit():
+        items = max(lists, key=len, default=[])  # the bibliography: the file with most \\bibitem entries
+        n = int(label)
+        if 1 <= n <= len(items):
+            key, body = items[n - 1]
+            names = [x.lower() for x in (*target["first_authors"], *target["collaborations"]) if len(x) > 2]
+            if any(x in body.lower() for x in names):
+                if key.strip() not in keys:
+                    stats["keys found only through the INSPIRE label"] += 1
+                keys.add(key.strip())
+            else:
+                stats["label rejected: entry does not name the authors"] += 1
     return keys
 
 
@@ -181,7 +213,8 @@ def clean(sentence: str) -> str:
     return s
 
 
-def contexts(texts: list[str], keys: set[str], target: dict, stats: Counter) -> list[str]:
+def contexts(texts: list[str], keys: set[str], target: dict, stats: Counter) -> list[tuple[str, str]]:
+    """(query, context) pairs: the sentence without the citation, and with [CITED] in its place."""
     found = []
     surnames = {a.lower() for a in target["authors"] if len(a) > 2}
     for text in texts:
@@ -203,7 +236,11 @@ def contexts(texts: list[str], keys: set[str], target: dict, stats: Counter) -> 
             if len(CITE.findall(raw)) > 1:
                 stats["dropped: other citations in the sentence"] += 1
                 continue
-            sentence = clean(CITE.sub(" ", raw))
+            if len(MATH.findall(raw)) > MAX_FORMULAS:
+                stats["dropped: more than two formulas"] += 1
+                continue
+            context = clean(CITE.sub(" [CITED] ", raw))
+            sentence = re.sub(r"\s+", " ", context.replace("[CITED]", " ")).strip(" ,;:")
             words = re.findall(r"[a-z]+", sentence.lower())
             if surnames & set(words) or "et al" in sentence.lower():
                 stats["dropped: names an author"] += 1
@@ -215,7 +252,7 @@ def contexts(texts: list[str], keys: set[str], target: dict, stats: Counter) -> 
                 stats["dropped: too short or too long"] += 1
                 continue
             stats["kept"] += 1
-            found.append(sentence)
+            found.append((sentence, context))
     return found
 
 
@@ -244,8 +281,8 @@ async def main() -> None:
     ):
         targets = await sample_targets(client, args.n, args.seed, excluded)
         for target in targets:
-            kept: list[tuple[str, str]] = []
-            for citing in await citing_papers(client, target, args.per_target, rng):
+            kept: list[tuple[str, tuple[str, str]]] = []
+            for citing, label in await citing_papers(client, target, args.per_target, rng):
                 if len(kept) >= args.per_target:
                     break
                 stats["citing papers tried"] += 1
@@ -255,12 +292,12 @@ async def main() -> None:
                     stats["no LaTeX source"] += 1
                     continue
                 before = stats["cite of target"]
-                sentences = contexts(texts, target_keys(texts, target), target, stats)
+                sentences = contexts(texts, target_keys(texts, target, label, stats), target, stats)
                 stats["citing papers where the target key was found"] += stats["cite of target"] > before
                 if sentences:
                     kept.append((citing, rng.choice(sentences)))  # one sentence per citing paper
             stats["targets with a sentence"] += bool(kept)
-            for i, (citing, sentence) in enumerate(kept):
+            for i, (citing, (sentence, context)) in enumerate(kept):
                 rows.append(
                     {
                         "id": f"c{target['recid']}-{i}",
@@ -268,6 +305,7 @@ async def main() -> None:
                         "recid": target["recid"],
                         "title": target["title"],
                         "query": sentence,
+                        "context": context,
                         "citing_arxiv": citing,
                         "abstract_share": round(abstract_share(sentence, target["abstract"]), 3),
                     }
