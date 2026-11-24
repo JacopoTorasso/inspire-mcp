@@ -1,0 +1,261 @@
+"""Two-stage semantic search on top of the live INSPIRE API.
+
+INSPIRE's search engine joins plain words with AND, so a natural-language question
+often returns nothing. This module:
+
+1. candidate generation: turns the question into a relaxed INSPIRE query (content words
+   joined with OR, plus the strict AND query when it has hits) and takes the top `pool` records;
+2. reranking: scores candidates against the question, with dense embeddings when the
+   optional `fastembed` dependency is installed, or BM25 otherwise;
+3. fusion: combines the reranker order with INSPIRE's own order by reciprocal rank fusion.
+
+No index has to be hosted: the database stays at INSPIRE, only the candidates are embedded,
+and their vectors are cached on disk by record id.
+"""
+
+from __future__ import annotations
+
+import hashlib
+import math
+import os
+import re
+import sqlite3
+from collections import Counter
+from collections.abc import Sequence
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Protocol
+
+from .client import InspireClient, InspireError, Paper
+
+STOPWORDS = frozenset(
+    """a about after all also an and any are as at be been by can could did do does for from
+    had has have how i if in into is it its me my of on or our paper papers please show shows
+    so some than that the their them then there these they this those to under up was we were
+    what when where which who whom why will with would you your find found give tell look looking
+    article articles work works study studies original first new approach result results using
+    based between one two""".split()
+)
+INSPIRE_RESERVED = frozenset({"and", "or", "not", "to", "a", "t", "j", "cn", "date", "topcite"})
+TOKEN = re.compile(r"[A-Za-z][A-Za-z0-9\-]*[A-Za-z0-9]|[A-Za-z]{2,}|\d+(?:\.\d+)*")
+MAX_TERMS = 12
+RRF_K = 60
+
+
+def content_terms(question: str, max_terms: int = MAX_TERMS) -> list[str]:
+    """Distinctive words of a question, in order, without stopwords or duplicates."""
+    seen: dict[str, None] = {}
+    for tok in TOKEN.findall(question):
+        low = tok.lower().strip("-")
+        if len(low) < 2 or low in STOPWORDS or low in INSPIRE_RESERVED or low in seen:
+            continue
+        seen[low] = None
+    return list(seen)[:max_terms]
+
+
+def _quote(term: str, always: bool = False) -> str:
+    # Hyphens and dots confuse the INSPIRE parser ("d-brane" reads as the date operator "d"), so quote them.
+    return f'"{term}"' if always or not term.isalnum() else term
+
+
+def relaxed_query(question: str, quote_all: bool = False) -> str:
+    return " or ".join(_quote(t, quote_all) for t in content_terms(question))
+
+
+def doc_text(p: Paper, max_chars: int = 1200) -> str:
+    return f"{p.title}. {p.abstract or ''}"[:max_chars]
+
+
+class Reranker(Protocol):
+    name: str
+
+    def scores(self, query: str, docs: Sequence[Paper]) -> list[float]: ...
+
+
+def _tokens(text: str) -> list[str]:
+    return [t for t in re.findall(r"[a-z0-9]+", text.lower()) if t not in STOPWORDS and len(t) > 1]
+
+
+class BM25Reranker:
+    """Okapi BM25 over the candidate set. Cheap and dependency free, but IDF on a small pool is noisy."""
+
+    name = "bm25"
+
+    def __init__(self, k1: float = 1.5, b: float = 0.75) -> None:
+        self.k1, self.b = k1, b
+
+    def scores(self, query: str, docs: Sequence[Paper]) -> list[float]:
+        tfs = [Counter(_tokens(doc_text(d))) for d in docs]
+        if not tfs:
+            return []
+        lens = [sum(tf.values()) for tf in tfs]
+        avg = sum(lens) / len(lens) or 1.0
+        n = len(docs)
+        df = Counter(t for tf in tfs for t in tf)
+        out = []
+        for tf, length in zip(tfs, lens, strict=True):
+            s = 0.0
+            for t in set(_tokens(query)):
+                if t in tf:
+                    idf = math.log(1 + (n - df[t] + 0.5) / (df[t] + 0.5))
+                    s += idf * tf[t] * (self.k1 + 1) / (tf[t] + self.k1 * (1 - self.b + self.b * length / avg))
+            out.append(s)
+        return out
+
+
+class DenseReranker:
+    """Cosine similarity of bge embeddings (fastembed, ONNX on CPU) with an on-disk vector cache."""
+
+    QUERY_PREFIX = "Represent this sentence for searching relevant passages: "
+
+    def __init__(self, model: str = "BAAI/bge-small-en-v1.5", cache_path: Path | None = None) -> None:
+        try:
+            from fastembed import TextEmbedding
+        except ImportError as exc:  # pragma: no cover - exercised only without the extra
+            raise RuntimeError("dense reranking needs the 'semantic' extra: pip install inspire-mcp[semantic]") from exc
+        import numpy as np
+
+        self._np = np
+        self.model_name = model
+        self.name = f"dense:{model.split('/')[-1]}"
+        self._model = TextEmbedding(model)
+        cache_path = cache_path or Path(os.environ.get("INSPIRE_MCP_CACHE", Path.home() / ".cache" / "inspire-mcp"))
+        cache_path.mkdir(parents=True, exist_ok=True)
+        self._db = sqlite3.connect(cache_path / "embeddings.sqlite", check_same_thread=False)
+        self._db.execute("CREATE TABLE IF NOT EXISTS emb (key TEXT PRIMARY KEY, vec BLOB)")
+
+    def _key(self, p: Paper) -> str:
+        digest = hashlib.sha1(doc_text(p).encode()).hexdigest()[:16]
+        return f"{self.model_name}|{p.recid}|{digest}"
+
+    def _embed_docs(self, docs: Sequence[Paper]):
+        np = self._np
+        keys = [self._key(d) for d in docs]
+        cached = {}
+        for i in range(0, len(keys), 500):
+            chunk = keys[i : i + 500]
+            marks = ",".join("?" * len(chunk))
+            cached.update(self._db.execute(f"SELECT key, vec FROM emb WHERE key IN ({marks})", chunk).fetchall())
+        missing = [i for i, k in enumerate(keys) if k not in cached]
+        if missing:
+            vecs = list(self._model.embed([doc_text(docs[i]) for i in missing], batch_size=32))
+            rows = [(keys[i], np.asarray(v, dtype=np.float32).tobytes()) for i, v in zip(missing, vecs, strict=True)]
+            self._db.executemany("INSERT OR REPLACE INTO emb VALUES (?, ?)", rows)
+            self._db.commit()
+            cached.update(rows)
+        return np.stack([np.frombuffer(cached[k], dtype=np.float32) for k in keys])
+
+    def scores(self, query: str, docs: Sequence[Paper]) -> list[float]:
+        if not docs:
+            return []
+        np = self._np
+        mat = self._embed_docs(docs)
+        mat = mat / np.linalg.norm(mat, axis=1, keepdims=True)
+        q = np.asarray(next(iter(self._model.embed([self.QUERY_PREFIX + query]))), dtype=np.float32)
+        q /= np.linalg.norm(q)
+        return (mat @ q).tolist()
+
+
+class CrossEncoderReranker:
+    """Scores (question, abstract) pairs jointly with a cross-encoder: slower per pair than comparing
+    cached embeddings, but much better at telling apart abstracts on the same topic."""
+
+    def __init__(self, model: str = "Xenova/ms-marco-MiniLM-L-6-v2") -> None:
+        try:
+            from fastembed.rerank.cross_encoder import TextCrossEncoder
+        except ImportError as exc:  # pragma: no cover - exercised only without the extra
+            raise RuntimeError("cross-encoder reranking needs the 'semantic' extra") from exc
+        self.model_name = model
+        self.name = f"cross-encoder:{model.split('/')[-1]}"
+        self._model = TextCrossEncoder(model)
+
+    def scores(self, query: str, docs: Sequence[Paper]) -> list[float]:
+        if not docs:
+            return []
+        return [float(s) for s in self._model.rerank(query, [doc_text(d) for d in docs], batch_size=16)]
+
+
+def default_reranker() -> Reranker:
+    try:
+        return DenseReranker()
+    except RuntimeError:
+        return BM25Reranker()
+
+
+def rrf(*rankings: Sequence[int], k: int = RRF_K) -> list[int]:
+    fused: Counter[int] = Counter()
+    for ranking in rankings:
+        for pos, recid in enumerate(ranking):
+            fused[recid] += 1.0 / (k + pos + 1)
+    return [recid for recid, _ in fused.most_common()]
+
+
+@dataclass
+class SemanticResult:
+    papers: list[Paper]
+    scores: dict[int, float]
+    inspire_query: str
+    pool_size: int
+    strict_hits: int
+    reranker: str
+    fusion: str
+
+
+async def candidates(
+    client: InspireClient, question: str, pool: int = 50, influential: int = 0, min_citations: int = 250
+) -> tuple[list[Paper], str, int]:
+    """Candidate pool from the live INSPIRE index.
+
+    Strict AND results first (high precision when they exist), then the relaxed OR query by INSPIRE
+    relevance, then optionally `influential` relaxed-query hits restricted to well cited papers, a prior
+    for questions about foundational work that relevance ranking alone tends to bury.
+    """
+    try:
+        strict_total, strict = await client.search_literature(question, size=min(pool, 25))
+    except InspireError:  # the raw question is not valid INSPIRE syntax, e.g. unbalanced quotes
+        strict_total, strict = 0, []
+    relaxed = relaxed_query(question)
+    loose: list[Paper] = []
+    cited: list[Paper] = []
+    if relaxed:
+        try:
+            _, loose = await client.search_literature(relaxed, size=pool)
+        except InspireError:
+            relaxed = relaxed_query(question, quote_all=True)
+            try:
+                _, loose = await client.search_literature(relaxed, size=pool)
+            except InspireError:
+                loose = []
+        if influential and loose:
+            _, cited = await client.search_literature(f"({relaxed}) and topcite {min_citations}+", size=influential)
+    merged: dict[int, Paper] = {}
+    for p in [*strict, *loose[: pool - len(cited)], *cited, *loose[pool - len(cited) :]]:
+        merged.setdefault(p.recid, p)
+    return list(merged.values())[:pool], relaxed, strict_total
+
+
+async def semantic_search(
+    client: InspireClient,
+    question: str,
+    k: int = 10,
+    pool: int = 50,
+    reranker: Reranker | None = None,
+    fuse_with_inspire: bool = True,
+    influential: int = 0,
+) -> SemanticResult:
+    reranker = reranker or BM25Reranker()
+    docs, relaxed, strict_total = await candidates(client, question, pool, influential=influential)
+    scores = reranker.scores(question, docs) if docs else []
+    by_score = [d.recid for d, _ in sorted(zip(docs, scores, strict=True), key=lambda x: -x[1])]
+    inspire_order = [d.recid for d in docs]
+    order = rrf(by_score, inspire_order) if fuse_with_inspire else by_score
+    lookup = {d.recid: d for d in docs}
+    return SemanticResult(
+        papers=[lookup[r] for r in order[:k]],
+        scores={d.recid: round(s, 4) for d, s in zip(docs, scores, strict=True)},
+        inspire_query=relaxed,
+        pool_size=len(docs),
+        strict_hits=strict_total,
+        reranker=reranker.name,
+        fusion="rrf(reranker, inspire)" if fuse_with_inspire else "reranker only",
+    )

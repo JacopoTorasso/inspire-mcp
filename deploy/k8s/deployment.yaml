@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: inspire-mcp
+  labels: {app: inspire-mcp}
+spec:
+  replicas: 2
+  selector:
+    matchLabels: {app: inspire-mcp}
+  template:
+    metadata:
+      labels: {app: inspire-mcp}
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: inspire-mcp
+          image: ghcr.io/OWNER/inspire-mcp:semantic   # replace OWNER after publishing the image
+          ports:
+            - {name: http, containerPort: 8000}
+          env:
+            - {name: INSPIRE_MCP_CACHE, value: /cache}
+          resources:
+            requests: {cpu: 250m, memory: 512Mi}
+            limits: {cpu: "2", memory: 1Gi}
+          readinessProbe:
+            httpGet: {path: /healthz, port: http}
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: {path: /healthz, port: http}
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          volumeMounts:
+            - {name: cache, mountPath: /cache}
+            - {name: tmp, mountPath: /tmp}
+      volumes:
+        - name: cache
+          emptyDir: {sizeLimit: 1Gi}
+        - name: tmp
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: inspire-mcp
+spec:
+  selector: {app: inspire-mcp}
+  ports:
+    - {name: http, port: 80, targetPort: http}

@@ -1,0 +1,22 @@
+# Weekly retrieval benchmark against the live INSPIRE index: catches regressions when INSPIRE
+# ranking, the corpus or a dependency changes. Results are kept as a build artifact.
+name: eval
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 6 * * 1"
+
+jobs:
+  eval:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync --frozen --extra eval
+      - run: uv run python eval/run_eval.py | tee eval-summary.md
+      - run: cat eval-summary.md >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: eval-results
+          path: eval/results/
