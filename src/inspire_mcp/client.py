@@ -65,8 +65,13 @@ class Paper:
     categories: list[str] = field(default_factory=list)
     url: str = ""
 
-    def to_dict(self) -> dict[str, Any]:
-        return asdict(self)
+    def to_dict(self, compact: bool = False) -> dict[str, Any]:
+        """`compact` keeps identifiers, title, year and citations: enough to choose what to read next."""
+        data = asdict(self)
+        if compact:
+            for key in ("abstract", "authors", "categories", "journal"):
+                data.pop(key, None)
+        return data
 
 
 @dataclass

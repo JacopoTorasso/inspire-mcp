@@ -10,6 +10,10 @@ spec:
   template:
     metadata:
       labels: {app: inspire-mcp}
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8000"
+        prometheus.io/path: /metrics
     spec:
       securityContext:
         runAsNonRoot: true
@@ -17,17 +21,22 @@ spec:
         seccompProfile: {type: RuntimeDefault}
       containers:
         - name: inspire-mcp
-          image: ghcr.io/OWNER/inspire-mcp:semantic   # replace OWNER after publishing the image
+          image: ghcr.io/OWNER/inspire-mcp:latest-semantic   # replace OWNER with the GitHub account
           ports:
             - {name: http, containerPort: 8000}
           env:
             - {name: INSPIRE_MCP_CACHE, value: /cache}
+            - {name: INSPIRE_MCP_LOG_FORMAT, value: json}
           resources:
             requests: {cpu: 250m, memory: 512Mi}
             limits: {cpu: "2", memory: 1Gi}
-          readinessProbe:
+          readinessProbe:            # 503 until the reranker model is loaded
+            httpGet: {path: /readyz, port: http}
+            periodSeconds: 5
+          startupProbe:
             httpGet: {path: /healthz, port: http}
-            periodSeconds: 10
+            failureThreshold: 30
+            periodSeconds: 2
           livenessProbe:
             httpGet: {path: /healthz, port: http}
             initialDelaySeconds: 10

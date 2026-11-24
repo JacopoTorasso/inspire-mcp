@@ -79,7 +79,7 @@ async def test_semantic_search_tool_reports_retrieval_details():
     async with Client(server()) as client:
         result = await client.call_tool("semantic_search", {"question": "discovery of the higgs boson", "pool": 500})
     sc = result.structured_content
-    assert sc["results"][0]["recid"] == 1124337 and "similarity" in sc["results"][0]
+    assert sc["results"][0]["recid"] == 1124337 and "score" in sc["results"][0]
     assert sc["retrieval"]["reranker"] == "bm25" and sc["retrieval"]["inspire_query"] == "discovery or higgs or boson"
 
 
@@ -126,3 +126,38 @@ async def test_prefer_influential_adds_citation_filtered_query():
         await client.call_tool("semantic_search", {"question": "higgs discovery", "prefer_influential": True})
     queries = [c.request.url.params["q"] for c in route.calls]
     assert "(higgs or discovery) and topcite 250+" in queries
+
+
+def test_options_read_environment(monkeypatch):
+    from inspire_mcp.server import parse_args
+
+    monkeypatch.setenv("INSPIRE_MCP_TRANSPORT", "streamable-http")
+    monkeypatch.setenv("INSPIRE_MCP_PORT", "9001")
+    monkeypatch.setenv("INSPIRE_MCP_RERANKER", "bm25")
+    args = parse_args([])
+    assert (args.transport, args.port, args.reranker) == ("streamable-http", 9001, "bm25")
+    assert parse_args(["--port", "7000"]).port == 7000  # flags win over environment
+
+
+def test_json_log_format():
+    import json
+    import logging
+
+    from inspire_mcp.server import _JsonFormatter
+
+    record = logging.LogRecord("inspire_mcp", logging.INFO, __file__, 1, "tool=%s", ("get_paper",), None)
+    entry = json.loads(_JsonFormatter().format(record))
+    assert entry["message"] == "tool=get_paper" and entry["level"] == "INFO"
+
+
+@respx.mock
+async def test_search_pagination_and_compact_results():
+    route = respx.get(f"{BASE_URL}/literature").mock(return_value=httpx.Response(200, json=hits(ATLAS_HIGGS, total=23)))
+    async with Client(server()) as client:
+        first = await client.call_tool("search_literature", {"query": "higgs", "size": 10, "compact": True})
+        last = await client.call_tool("search_literature", {"query": "higgs", "size": 10, "page": 3})
+    sc = first.structured_content
+    assert (sc["page"], sc["has_more"], sc["next_page"]) == (1, True, 2)
+    assert "abstract" not in sc["results"][0] and sc["results"][0]["citation_count"] == 17848
+    assert last.structured_content["has_more"] is False and last.structured_content["next_page"] is None
+    assert route.calls.last.request.url.params["page"] == "3"

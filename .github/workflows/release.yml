@@ -1,0 +1,53 @@
+# On a version tag: test, publish the package to PyPI (trusted publishing, no token stored)
+# and both container images to GitHub Container Registry.
+name: release
+on:
+  push:
+    tags: ["v*"]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync --frozen
+      - run: uv run pytest -q
+
+  pypi:
+    needs: test
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write   # OIDC token for PyPI trusted publishing
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv build
+      - uses: pypa/gh-action-pypi-publish@release/v1
+
+  images:
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        include:
+          - {extras: "", suffix: ""}
+          - {extras: "semantic", suffix: "-semantic"}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          push: true
+          build-args: EXTRAS=${{ matrix.extras }}
+          tags: |
+            ghcr.io/${{ github.repository }}:${{ github.ref_name }}${{ matrix.suffix }}
+            ghcr.io/${{ github.repository }}:latest${{ matrix.suffix }}

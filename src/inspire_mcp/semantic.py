@@ -15,11 +15,13 @@ and their vectors are cached on disk by record id.
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import math
 import os
 import re
 import sqlite3
+import threading
 from collections import Counter
 from collections.abc import Sequence
 from dataclasses import dataclass
@@ -141,6 +143,7 @@ class DenseReranker:
         self._model = TextEmbedding(model)
         cache_path = cache_path or Path(os.environ.get("INSPIRE_MCP_CACHE", Path.home() / ".cache" / "inspire-mcp"))
         cache_path.mkdir(parents=True, exist_ok=True)
+        self._lock = threading.Lock()  # one inference at a time, and sqlite writes from one thread at a time
         self._db = sqlite3.connect(cache_path / "embeddings.sqlite", check_same_thread=False)
         self._db.execute("CREATE TABLE IF NOT EXISTS emb (key TEXT PRIMARY KEY, vec BLOB)")
 
@@ -151,7 +154,7 @@ class DenseReranker:
     def _embed_docs(self, docs: Sequence[Paper]):
         np = self._np
         keys = [self._key(d) for d in docs]
-        cached = {}
+        cached: dict[str, bytes] = {}
         for i in range(0, len(keys), 500):
             chunk = keys[i : i + 500]
             marks = ",".join("?" * len(chunk))
@@ -169,9 +172,10 @@ class DenseReranker:
         if not docs:
             return []
         np = self._np
-        mat = self._embed_docs(docs)
+        with self._lock:
+            mat = self._embed_docs(docs)
+            q = np.asarray(next(iter(self._model.embed([self.QUERY_PREFIX + query]))), dtype=np.float32)
         mat = mat / np.linalg.norm(mat, axis=1, keepdims=True)
-        q = np.asarray(next(iter(self._model.embed([self.QUERY_PREFIX + query]))), dtype=np.float32)
         q /= np.linalg.norm(q)
         return (mat @ q).tolist()
 
@@ -190,11 +194,13 @@ class CrossEncoderReranker:
         self.model_name = model
         self.name = f"cross-encoder:{model.split('/')[-1]}"
         self._model = TextCrossEncoder(model)
+        self._lock = threading.Lock()
 
     def scores(self, query: str, docs: Sequence[Paper]) -> list[float]:
         if not docs:
             return []
-        return [float(s) for s in self._model.rerank(query, [doc_text(d) for d in docs], batch_size=16)]
+        with self._lock:
+            return [float(s) for s in self._model.rerank(query, [doc_text(d) for d in docs], batch_size=16)]
 
 
 def default_reranker() -> Reranker:
@@ -208,11 +214,11 @@ def default_reranker() -> Reranker:
 
 
 def rrf(*rankings: Sequence[int], k: int = RRF_K) -> list[int]:
-    fused: Counter[int] = Counter()
+    fused: dict[int, float] = {}
     for ranking in rankings:
         for pos, recid in enumerate(ranking):
-            fused[recid] += 1.0 / (k + pos + 1)
-    return [recid for recid, _ in fused.most_common()]
+            fused[recid] = fused.get(recid, 0.0) + 1.0 / (k + pos + 1)
+    return sorted(fused, key=lambda recid: -fused[recid])
 
 
 @dataclass
@@ -302,7 +308,8 @@ async def semantic_search(
     if fuse_with_inspire is None:
         fuse_with_inspire = getattr(reranker, "fuse_with_inspire", True)
     docs, relaxed, strict_total = await candidates(client, question, pool, influential=influential, strategy=strategy)
-    scores = reranker.scores(question, docs) if docs else []
+    # Models are CPU-bound and synchronous: run them in a worker thread so the event loop keeps serving.
+    scores = await asyncio.to_thread(reranker.scores, question, docs) if docs else []
     by_score = [d.recid for d, _ in sorted(zip(docs, scores, strict=True), key=lambda x: -x[1])]
     inspire_order = [d.recid for d in docs]
     order = rrf(by_score, inspire_order) if fuse_with_inspire else by_score

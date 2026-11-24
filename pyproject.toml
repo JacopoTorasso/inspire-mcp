@@ -1,16 +1,27 @@
 [project]
 name = "inspire-mcp"
-version = "0.3.0"
-description = "MCP server exposing the INSPIRE-HEP literature and author APIs to AI assistants, with a retrieval evaluation harness"
+version = "0.4.0"
+description = "Semantic search over INSPIRE-HEP for AI assistants: an MCP server with measured two-stage retrieval"
 readme = "README.md"
 license = "MIT"
+keywords = ["mcp", "model-context-protocol", "inspire-hep", "high-energy-physics", "semantic-search", "rag", "llm"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Physics",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Typing :: Typed",
+]
 authors = [
     { name = "Jacopo Torasso" }
 ]
 requires-python = ">=3.12"
 dependencies = [
     "httpx>=0.27",
-    "mcp>=1.2",
+    "mcp>=2.3,<3",
+    "starlette>=0.46",
 ]
 
 [project.optional-dependencies]
@@ -29,6 +40,7 @@ build-backend = "uv_build"
 
 [dependency-groups]
 dev = [
+    "mypy>=2.4.1",
     "numpy>=2.5.5",
     "pytest>=9.2.0",
     "pytest-asyncio>=1.5.0",
@@ -36,6 +48,11 @@ dev = [
     "respx>=0.23.1",
     "ruff>=0.17.6",
 ]
+
+[project.urls]
+Repository = "https://github.com/OWNER/inspire-mcp"
+Issues = "https://github.com/OWNER/inspire-mcp/issues"
+Changelog = "https://github.com/OWNER/inspire-mcp/blob/main/CHANGELOG.md"
 
 [project.scripts]
 inspire-mcp = "inspire_mcp.server:main"
@@ -51,3 +68,9 @@ target-version = "py312"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
+
+[tool.mypy]
+python_version = "3.12"
+ignore_missing_imports = true
+warn_unused_ignores = true
+files = ["src"]
