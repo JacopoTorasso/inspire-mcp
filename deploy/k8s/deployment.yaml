@@ -27,6 +27,8 @@ spec:
           env:
             - {name: INSPIRE_MCP_CACHE, value: /cache}
             - {name: INSPIRE_MCP_LOG_FORMAT, value: json}
+            - {name: INSPIRE_MCP_ALLOWED_HOSTS, value: inspire-mcp.example.org}   # your public host name
+            - {name: INSPIRE_MCP_TRUST_PROXY, value: "true"}                     # behind the ingress
           resources:
             requests: {cpu: 250m, memory: 512Mi}
             limits: {cpu: "2", memory: 1Gi}

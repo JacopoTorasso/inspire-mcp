@@ -4,29 +4,67 @@
 [![eval](https://github.com/OWNER/inspire-mcp/actions/workflows/eval.yml/badge.svg)](https://github.com/OWNER/inspire-mcp/actions/workflows/eval.yml)
 [![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-**Semantic search over [INSPIRE-HEP](https://inspirehep.net) for AI assistants.** An
-[MCP](https://modelcontextprotocol.io) server that finds high energy physics papers from
-natural-language questions, with every retrieval choice backed by a published benchmark.
+**Ask your AI assistant about high energy physics literature, in plain language.**
 
-INSPIRE's search engine is built for its query language: plain-language questions return nothing
-70% of the time. `semantic_search` turns a question into candidates from the live INSPIRE index
-and reranks them with a cross-encoder, putting the right paper first **70% of the time instead of 38%**
-on a benchmark of randomly sampled papers ([evaluation](docs/evaluation.md)). No index to host:
-the data stays at INSPIRE.
+inspire-mcp connects assistants such as Claude to [INSPIRE-HEP](https://inspirehep.net), the database
+of high energy physics papers, authors, conferences and jobs. Describe the paper you are looking for
+in your own words: the server finds it and puts the right one first 70% of the time, against 7% for
+the same question typed into INSPIRE's search box ([how this is measured](docs/evaluation.md)).
 
-> Personal project built on the public [INSPIRE REST API](https://github.com/inspirehep/rest-api-doc),
-> not affiliated with CERN or INSPIRE. For broad coverage of the INSPIRE API (figures, author metrics,
-> formatted reference lists) see also [inspirehep-mcp](https://github.com/MohamedElashri/inspirehep-mcp);
-> this project focuses on natural-language retrieval and on measuring it.
+## What you can ask
 
-## Quickstart
+* *"Find the paper that introduced GANs for calorimeter shower simulation, and who cites it lately"*
+* *"What are Michela Paganini's most cited papers outside large collaborations? What is her h-index?"*
+* *"Which neutrino conferences are coming up, and where?"*
+* *"Are there open postdoc positions in lattice QCD in Europe?"*
+* *"Show me the figures of arXiv:1705.02355 and give me its BibTeX"*
+* *"Papers similar to the Randall–Sundrum paper"*
+* *"Recent LHCb papers on pentaquarks"*
+
+Every answer comes with INSPIRE links, so you can check the sources.
+
+## Try it in one minute
+
+You need [uv](https://docs.astral.sh/uv/), a small Python tool runner:
 
 ```bash
-# Claude Code
+# macOS and Linux
+curl -LsSf https://astral.sh/uv/install.sh | sh
+# Windows (PowerShell)
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+```
+
+Then search straight from the terminal, no AI client needed:
+
+```console
+$ uvx --from "inspire-mcp[semantic]" inspire-mcp search "neural networks to speed up calorimeter shower simulation"
+
+ 1. Quantum Invertible Neural Networks for Fast Calorimetry as Quantum Generative Model with high
+    interpretability at Future Colliders
+     Corchia, Federico 2026  ·  0 citations  ·  https://inspirehep.net/literature/3221332
+ 2. CaloShowerGAN, a generative adversarial network model for fast calorimeter shower simulation
+     Faucci Giannelli, Michele 2024  ·  33 citations  ·  https://inspirehep.net/literature/2697185
+ 3. On the use of neural networks for energy reconstruction in high-granularity calorimeters
+     Akchurin, N. 2021  ·  38 citations  ·  https://inspirehep.net/literature/1889423
+ ...
+ranked by cross-encoder:ms-marco-MiniLM-L-6-v2 from 50 INSPIRE candidates in 2.7s
+```
+
+The first run downloads the package and a small ranking model (about 100 MB); later runs start in
+seconds. Other commands: `inspire-mcp paper 1705.02355` shows one paper, `inspire-mcp doctor` checks
+your setup.
+
+## Use it with your AI assistant
+
+**Claude Code**, one command:
+
+```bash
 claude mcp add inspire -- uvx --from "inspire-mcp[semantic]" inspire-mcp
 ```
 
-Claude Desktop, Cursor and other clients (`mcpServers` in the client's configuration file):
+**Claude Desktop**: open *Settings → Developer → Edit Config* (the file is
+`~/Library/Application Support/Claude/claude_desktop_config.json` on macOS and
+`%APPDATA%\Claude\claude_desktop_config.json` on Windows), add the server and restart Claude:
 
 ```json
 {
@@ -39,126 +77,135 @@ Claude Desktop, Cursor and other clients (`mcpServers` in the client's configura
 }
 ```
 
-Before the first PyPI release, use `--from "git+https://github.com/OWNER/inspire-mcp"` instead.
-Without the `[semantic]` extra the server is lighter (no models) and reranks with BM25.
+**Cursor, VS Code, and other MCP clients** use the same `command` and `args`. Run
+`inspire-mcp config` to print the snippets.
 
-## Example
-
-A session driven through the MCP protocol by [`examples/demo.py`](examples/demo.py), real output:
-
-```text
-> semantic_search: 'using neural networks to accelerate the simulation of calorimeter showers'
-  50 candidates from INSPIRE, reranked by cross-encoder:ms-marco-MiniLM-L-6-v2
-  1. Accelerating Science with Generative Adversarial Networks: An Application to 3D Particle Showers
-     in Multilayer Calorimeters (2018, 258 citations) https://inspirehep.net/literature/1598455
-  2. Denoising Convolutional Networks to Accelerate Detector Simulation (2023, 5 citations)
-  3. On the use of neural networks for energy reconstruction in high-granularity calorimeters (2021, 38 citations)
-
-> get_paper: 1705.02355
-  Paganini, Michela, de Oliveira, Luke, Nachman, Benjamin; Phys.Rev.Lett. 120 042003
-
-> get_citing_papers: recid 1598455, most recent
-  258 citing papers, latest:
-  - Just CaloCHILL: fast hadronic shower generation in a learned latent space (2026)
-  - Localized anomaly detection with a calorimeter normalizing flow (2026)
-
-> get_bibtex
-  @article{Paganini:2017hrr, ...
-```
+> Until the first release is on PyPI, replace `inspire-mcp[semantic]` with
+> `inspire-mcp[semantic] @ git+https://github.com/OWNER/inspire-mcp`.
 
 ## Tools
 
-| Tool | What it does |
-|---|---|
-| `semantic_search(question, size, pool, prefer_influential, compact)` | papers for a natural-language question |
-| `search_literature(query, size, sort, page, compact)` | INSPIRE syntax (`t higgs and cn atlas and date > 2020`), paginated |
-| `get_paper(identifier)` | one record by INSPIRE recid, arXiv id or DOI |
-| `get_citing_papers(recid, size, sort)` | papers citing a record |
-| `get_references(recid, size)` | records a paper cites, most cited first |
-| `get_bibtex(identifiers)` | BibTeX generated by INSPIRE for up to 25 records |
-| `search_authors(name, size)` | author profiles with INSPIRE BAI and ORCID |
+The assistant picks the right tool by itself; this is what it has available.
 
-Also a resource, `inspire://literature/{recid}`, and a prompt, `literature_review(topic)`, that drives a
-cited overview of a topic. All tools are read-only; results carry an INSPIRE link so answers can be
-verified, and the server tells the model to treat retrieved text as data, not instructions.
+| | Tool | What it does |
+|---|---|---|
+| **Papers** | `semantic_search` | finds papers from a description in plain language |
+| | `search_literature` | precise search in INSPIRE syntax (`t higgs and cn atlas and date > 2020`) |
+| | `get_paper` | full record: abstract, authors, journal, keywords, arXiv PDF, open-access full text |
+| | `find_similar_papers` | papers on the same subject as a given one |
+| | `get_citing_papers` | who cites a paper, newest or most cited first |
+| | `get_references` | what a paper cites |
+| | `get_paper_figures` | figures with captions and download links |
+| | `export_citations` | BibTeX or LaTeX (`\bibitem`, EU or US style) entries |
+| | `search_collaboration` | papers of ATLAS, CMS, LHCb, ALICE, Belle II... |
+| **People** | `search_authors` | find an author profile |
+| | `get_author_profile` | papers, citations, h-index, citation distribution |
+| | `get_author_papers` | an author's papers, optionally only those written in small teams |
+| **Community** | `search_conferences` | upcoming (or past) conferences and workshops |
+| | `search_seminars` | upcoming seminars and online talks, with link to join |
+| | `search_jobs` | open positions: postdocs, faculty, PhD, staff |
+| | `search_institutions` | research institutions, location and output |
+| | `search_experiments` | experiments: accelerator, dates, number of papers |
+| | `ping` | checks the server is up |
 
-## How semantic search works
+Lists are paginated and can return compact results to save the assistant's context. Also included:
+a resource, `inspire://literature/{recid}`, and a prompt, `literature_review`, that writes a short cited
+overview of a topic.
+
+## How good is the search?
+
+Measured on 40 papers picked at random from INSPIRE, each described by a question that does not
+repeat its title:
+
+| Approach | Right paper first | In the top 10 |
+|---|---|---|
+| Question typed into INSPIRE's search | 7% | 10% |
+| Keywords of the question, INSPIRE's ranking | 38% | 72% |
+| **inspire-mcp** (keywords, then a cross-encoder re-reads every abstract) | **70%** | **85%** |
+
+A second benchmark of 60 famous papers, the significance tests and the design choices that were
+tried and rejected are in [docs/evaluation.md](docs/evaluation.md).
+
+## How it works
 
 ```mermaid
 flowchart LR
-    Q[question] --> S[strict query]
-    Q --> O["content words joined with OR<br/>(hyphenated terms quoted)"]
-    Q -. prefer_influential .-> I["same query,<br/>papers with 250+ citations"]
-    S & O & I --> P[(up to 50 candidates<br/>from live INSPIRE)]
-    P --> R["cross-encoder reads question + abstract<br/>(fallback: embeddings or BM25)"]
-    R --> A[top results with scores<br/>and retrieval details]
+    Q[your question] --> K["keywords joined with OR<br/>(INSPIRE needs all words to match otherwise)"]
+    K --> P[(50 candidate papers<br/>from live INSPIRE)]
+    P --> R["cross-encoder reads the question<br/>with each title and abstract"]
+    R --> A[best matches, with links<br/>and how they were found]
 ```
 
-1. **Candidates** come from the live index: INSPIRE combines plain words with AND, so the server also
-   asks for the question's content words joined with OR. For questions about foundational work, the
-   model can set `prefer_influential` to reserve half of the pool for well-cited papers.
-2. **Reranking** reads the question and each title and abstract together (`ms-marco-MiniLM-L-6-v2`,
-   ONNX on CPU, about 2.7 s for 50 candidates). Each result reports how it was retrieved, so the model
-   and the user can see why a paper was or was not found.
+Nothing is copied or indexed: every search runs against the live INSPIRE database, and only the
+ranking happens locally, on CPU. For questions about foundational work the assistant can ask for
+highly cited candidates (`prefer_influential`), which helps find famous papers buried under their
+follow-ups.
 
-Each default was chosen from the benchmark; the rejected alternatives are documented too.
-
-| on randomly sampled papers (40 questions) | MRR@10 | right paper first |
-|---|---|---|
-| question sent to INSPIRE as is | 0.08 | 7% |
-| OR query, INSPIRE ranking | 0.49 | 38% |
-| + embedding reranking | 0.59 | 50% |
-| **+ cross-encoder reranking (default)** | **0.76** | **70%** |
-
-On famous papers the limit is different (finding them among thousands of follow-ups), and a benchmark
-built only on famous papers had led to the wrong conclusion: the full story, intervals and
-significance tests are in [docs/evaluation.md](docs/evaluation.md).
-
-## Deployment
+<details>
+<summary><b>Run it as a service</b> (Docker, Kubernetes, configuration)</summary>
 
 ```bash
-docker build --build-arg EXTRAS=semantic -t inspire-mcp:semantic .   # models baked in, no runtime download
-docker run -p 8000:8000 inspire-mcp:semantic
-kubectl apply -f deploy/k8s/deployment.yaml                           # non-root, read-only root fs
+docker build --build-arg EXTRAS=semantic -t inspire-mcp:semantic .   # models included, no download at runtime
+docker run -p 8000:8000 -e INSPIRE_MCP_ALLOWED_HOSTS=mcp.example.org inspire-mcp:semantic
+kubectl apply -f deploy/k8s/deployment.yaml                           # non-root, read-only filesystem, probes
 ```
 
-Release tags publish `ghcr.io/OWNER/inspire-mcp:<version>` (BM25, 364 MB) and `:<version>-semantic`
-(about 1 GB).
+Release tags publish `ghcr.io/OWNER/inspire-mcp:<version>` (no models, 364 MB) and
+`:<version>-semantic` (about 1 GB).
 
-| HTTP endpoint | Purpose |
+| Endpoint | Purpose |
 |---|---|
-| `/mcp` | MCP Streamable HTTP |
-| `/healthz` | liveness, never touches INSPIRE or the model |
-| `/readyz` | readiness, 503 until the reranker model is loaded |
+| `/mcp` | MCP over Streamable HTTP, rate limited per client |
+| `/healthz` | liveness |
+| `/readyz` | readiness: 503 until the ranking model is loaded |
 | `/metrics` | Prometheus: calls by tool and outcome, latency histogram, readiness |
 
-Configuration, as flags or environment variables:
+Every option is a flag or an environment variable:
 
 | Variable | Default | |
 |---|---|---|
-| `INSPIRE_MCP_TRANSPORT` | `stdio` | or `streamable-http` |
-| `INSPIRE_MCP_HOST`, `INSPIRE_MCP_PORT` | `127.0.0.1`, `8000` | HTTP bind address |
-| `INSPIRE_MCP_RERANKER` | `auto` | `cross-encoder`, `dense`, `bm25`; auto picks the best installed |
-| `INSPIRE_MCP_CACHE_TTL` | `300` | seconds INSPIRE responses stay cached in memory |
-| `INSPIRE_MCP_MIN_INTERVAL` | `0.35` | minimum seconds between INSPIRE requests (rate limit) |
-| `INSPIRE_MCP_CACHE` | `~/.cache/inspire-mcp` | embedding cache directory |
+| `INSPIRE_MCP_TRANSPORT` | `stdio` | `streamable-http` to serve over HTTP |
+| `INSPIRE_MCP_HOST`, `INSPIRE_MCP_PORT` | `127.0.0.1`, `8000` | also honours `PORT` |
+| `INSPIRE_MCP_ALLOWED_HOSTS` | | public host names (DNS rebinding protection when binding to `0.0.0.0`) |
+| `INSPIRE_MCP_RATE_LIMIT` | `120` | MCP requests per minute per client, `0` disables |
+| `INSPIRE_MCP_TRUST_PROXY` | `false` | identify clients by `X-Forwarded-For` behind a trusted proxy |
+| `INSPIRE_MCP_RERANKER` | `auto` | `cross-encoder`, `dense` or `bm25` |
+| `INSPIRE_MCP_CACHE_TTL` | `300` | seconds INSPIRE answers stay cached in memory |
+| `INSPIRE_MCP_MIN_INTERVAL` | `0.35` | seconds between requests to INSPIRE |
+| `INSPIRE_MCP_CACHE` | `~/.cache/inspire-mcp` | embedding cache |
 | `INSPIRE_MCP_LOG_FORMAT`, `INSPIRE_MCP_LOG_LEVEL` | `text`, `INFO` | `json` for log aggregation |
 
-The HTTP endpoint has no authentication: see [SECURITY.md](SECURITY.md).
+The HTTP endpoint has no authentication; see [SECURITY.md](SECURITY.md).
+
+</details>
+
+<details>
+<summary><b>Troubleshooting</b></summary>
+
+* **`uvx: command not found`**: install uv (above) and open a new terminal.
+* **The first search is slow**: the ranking model is downloaded once (about 100 MB).
+* **The assistant does not see the tools**: restart the client after editing its configuration, then
+  run `inspire-mcp doctor` in a terminal.
+* **Behind a corporate proxy**: set `HTTPS_PROXY`; the server needs to reach `https://inspirehep.net`.
+* **Lighter install**: `uvx inspire-mcp` (without `[semantic]`) skips the models and ranks with BM25,
+  which is noticeably less accurate.
+
+</details>
 
 ## Development
 
 ```bash
 uv sync --extra semantic
-uv run pytest                                    # 46 offline tests, HTTP mocked, about 90% coverage
+uv run pytest                                  # 68 tests, offline, about 90% coverage
 uv run ruff check . && uv run mypy
-uv run --extra eval python eval/run_eval.py      # benchmark against live INSPIRE
+uv run --extra eval python eval/run_eval.py    # benchmark against live INSPIRE
 ```
 
-CI runs lint, types, tests with a coverage gate, both images with a health probe and Kubernetes
-manifest validation; the benchmark runs weekly as a regression monitor. See
-[CONTRIBUTING.md](CONTRIBUTING.md) and [CHANGELOG.md](CHANGELOG.md).
+CI runs lint, types, tests, both container images with a health probe and Kubernetes manifest
+validation; the benchmark runs weekly to catch regressions. See [CONTRIBUTING.md](CONTRIBUTING.md)
+and [CHANGELOG.md](CHANGELOG.md).
 
 ## License
 
-MIT. Paper metadata comes from INSPIRE-HEP and is subject to its terms of use.
+MIT. Data comes from [INSPIRE-HEP](https://inspirehep.net) under its terms of use. This is an
+independent project, not affiliated with CERN or INSPIRE.

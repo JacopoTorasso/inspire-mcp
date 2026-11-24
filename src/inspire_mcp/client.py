@@ -39,6 +39,9 @@ LITERATURE_FIELDS = ",".join(
 AUTHOR_FIELDS = "control_number,name,ids,positions,arxiv_categories"
 
 Sort = Literal["mostrecent", "mostcited"]
+CitationStyle = Literal["bibtex", "latex-eu", "latex-us"]
+BAI = re.compile(r"^[A-Za-z][\w\-']*(\.[\w\-']+)*\.\d+$")
+ORCID = re.compile(r"^\d{4}-\d{4}-\d{4}-\d{3}[\dX]$")
 
 ARXIV_NEW = re.compile(r"^(arxiv:)?\d{4}\.\d{4,5}(v\d+)?$", re.IGNORECASE)
 TAG = re.compile(r"<[^>]+>")
@@ -64,14 +67,38 @@ class Paper:
     citation_count: int | None
     categories: list[str] = field(default_factory=list)
     url: str = ""
+    keywords: list[str] = field(default_factory=list)
+    pdf_url: str | None = None
 
     def to_dict(self, compact: bool = False) -> dict[str, Any]:
         """`compact` keeps identifiers, title, year and citations: enough to choose what to read next."""
         data = asdict(self)
         if compact:
-            for key in ("abstract", "authors", "categories", "journal"):
+            for key in ("abstract", "authors", "categories", "journal", "keywords"):
                 data.pop(key, None)
         return data
+
+
+@dataclass
+class Figure:
+    caption: str
+    url: str
+    filename: str | None
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+
+@dataclass
+class AuthorMetrics:
+    papers: int
+    citations: int
+    h_index: int
+    h_index_published: int
+    citation_distribution: dict[str, int]
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
 
 
 @dataclass
@@ -120,6 +147,7 @@ def parse_paper(metadata: dict[str, Any], max_authors: int = 5) -> Paper:
         year = int(str(metadata["earliest_date"])[:4])
     eprints = metadata.get("arxiv_eprints") or []
     dois = metadata.get("dois") or []
+    arxiv_id = eprints[0].get("value") if eprints else None
     return Paper(
         recid=recid,
         title=clean_markup(titles[0].get("title", "")),
@@ -129,11 +157,45 @@ def parse_paper(metadata: dict[str, Any], max_authors: int = 5) -> Paper:
         collaborations=[c["value"] for c in metadata.get("collaborations", []) if "value" in c],
         year=year,
         journal=journal,
-        arxiv_id=eprints[0].get("value") if eprints else None,
+        arxiv_id=arxiv_id,
         doi=dois[0].get("value") if dois else None,
         citation_count=metadata.get("citation_count"),
         categories=[c["term"] for c in metadata.get("inspire_categories", []) if "term" in c],
         url=f"https://inspirehep.net/literature/{recid}",
+        keywords=[k["value"] for k in metadata.get("keywords", []) if k.get("value")][:12],
+        pdf_url=f"https://arxiv.org/pdf/{arxiv_id}" if arxiv_id else None,
+    )
+
+
+def clean_latex(text: str) -> str:
+    """Make figure captions readable: drop simple LaTeX commands and math delimiters."""
+    text = re.sub(r"\\(textsc|textbf|textit|emph|mathrm|text)\{([^}]*)\}", r"\2", text)
+    text = re.sub(r"\\(label|ref|cite)\{[^}]*\}", "", text)
+    return re.sub(r"\s+", " ", text.replace("$", "")).strip()
+
+
+def parse_figures(metadata: dict[str, Any]) -> list[Figure]:
+    return [
+        Figure(caption=clean_latex(f.get("caption", "")), url=f["url"], filename=f.get("filename"))
+        for f in metadata.get("figures", [])
+        if f.get("url")
+    ]
+
+
+def parse_metrics(aggregations: dict[str, Any]) -> AuthorMetrics:
+    summary = aggregations.get("citation_summary", {})
+    h_index = summary.get("h-index", {}).get("value", {})
+    all_citations = summary.get("citations", {}).get("buckets", {}).get("all", {})
+    distribution = {
+        b["key"].replace("--", "-"): b["doc_count"]
+        for b in all_citations.get("citation_buckets", {}).get("buckets", [])
+    }
+    return AuthorMetrics(
+        papers=summary.get("doc_count", 0),
+        citations=int(all_citations.get("citations_count", {}).get("value", 0)),
+        h_index=h_index.get("all", 0),
+        h_index_published=h_index.get("published", 0),
+        citation_distribution=distribution,
     )
 
 
@@ -215,7 +277,8 @@ class InspireClient:
                     await asyncio.sleep(wait)
                 self._last_request = time.monotonic()
                 try:
-                    headers = {"Accept": "application/x-bibtex"} if params.get("format") == "bibtex" else None
+                    # Export formats (bibtex, latex-eu...) are only served when Accept does not demand JSON.
+                    headers = {"Accept": "*/*"} if "format" in params else None
                     resp = await self._http.get(path, params=params, headers=headers)
                 except httpx.TransportError as exc:
                     if attempt < self._max_retries:
@@ -251,23 +314,81 @@ class InspireClient:
         return papers[0] if papers else None
 
     async def citing_papers(
-        self, recid: int, size: int = 10, sort: Sort | None = "mostrecent"
+        self, recid: int, size: int = 10, sort: Sort | None = "mostrecent", page: int = 1
     ) -> tuple[int, list[Paper]]:
-        return await self.search_literature(f"refersto:recid:{recid}", size=size, sort=sort)
+        return await self.search_literature(f"refersto:recid:{recid}", size=size, sort=sort, page=page)
 
-    async def references(self, recid: int, size: int = 25) -> tuple[int, list[Paper]]:
-        return await self.search_literature(f"citedby:recid:{recid}", size=size, sort="mostcited")
+    async def references(self, recid: int, size: int = 25, page: int = 1) -> tuple[int, list[Paper]]:
+        return await self.search_literature(f"citedby:recid:{recid}", size=size, sort="mostcited", page=page)
 
-    async def bibtex(self, identifiers: list[str]) -> str:
-        """BibTeX entries, as generated by INSPIRE, for recids, arXiv ids or DOIs."""
+    async def figures(self, identifier: str) -> list[Figure]:
+        data = await self._get("/literature", {"q": identifier_query(identifier), "size": 1, "fields": "figures"})
+        hits = data["hits"]["hits"]
+        return parse_figures(hits[0]["metadata"]) if hits else []
+
+    async def documents(self, identifier: str) -> list[dict[str, Any]]:
+        """Full-text files INSPIRE hosts for a record (e.g. open-access PDFs from SCOAP3)."""
+        data = await self._get("/literature", {"q": identifier_query(identifier), "size": 1, "fields": "documents"})
+        hits = data["hits"]["hits"]
+        if not hits:
+            return []
+        return [
+            {"url": d["url"], "description": d.get("description"), "source": d.get("source")}
+            for d in hits[0]["metadata"].get("documents", [])
+            if d.get("url") and not d.get("hidden")
+        ]
+
+    async def export(self, identifiers: list[str], style: CitationStyle = "bibtex") -> str:
+        """Citation entries as generated by INSPIRE, for recids, arXiv ids or DOIs."""
         query = " or ".join(identifier_query(i) for i in identifiers)
-        return await self._request(
-            "/literature", {"q": query, "size": len(identifiers), "format": "bibtex"}, as_text=True
-        )
+        return await self._request("/literature", {"q": query, "size": len(identifiers), "format": style}, as_text=True)
 
     async def search_authors(self, name: str, size: int = 5) -> list[Author]:
         data = await self._get("/authors", {"q": name, "size": size, "fields": AUTHOR_FIELDS})
         return [parse_author(h["metadata"]) for h in data["hits"]["hits"]]
+
+    async def get_author(self, identifier: str) -> Author | None:
+        """Resolve an INSPIRE author recid, BAI (E.Witten.1), ORCID, or a name (best match)."""
+        ident = identifier.strip()
+        if ident.isdigit():
+            query = f"recid:{ident}"
+        elif ORCID.match(ident) or BAI.match(ident):
+            query = f"ids.value:{ident}"
+        else:
+            query = ident
+        authors = await self._get("/authors", {"q": query, "size": 1, "fields": AUTHOR_FIELDS})
+        hits = authors["hits"]["hits"]
+        return parse_author(hits[0]["metadata"]) if hits else None
+
+    async def author_metrics(self, author: Author) -> AuthorMetrics:
+        data = await self._get("/literature/facets", {"q": _author_query(author), "facet_name": "citation-summary"})
+        return parse_metrics(data.get("aggregations", {}))
+
+    async def author_papers(
+        self,
+        author: Author,
+        size: int = 10,
+        sort: Sort | None = "mostcited",
+        page: int = 1,
+        max_authors: int | None = None,
+    ) -> tuple[int, list[Paper]]:
+        query = _author_query(author) + (f" and ac 1->{max_authors}" if max_authors else "")
+        return await self.search_literature(query, size=size, sort=sort, page=page)
+
+    async def search_records(
+        self, collection: str, query: str, size: int = 10, page: int = 1, sort: str | None = None
+    ) -> tuple[int, list[dict[str, Any]]]:
+        """Raw metadata from another INSPIRE collection: conferences, seminars, jobs, institutions..."""
+        params: dict[str, Any] = {"q": query, "size": size, "page": page}
+        if sort:
+            params["sort"] = sort
+        data = await self._get(f"/{collection}", params)
+        return data["hits"]["total"], [h["metadata"] for h in data["hits"]["hits"]]
+
+
+def _author_query(author: Author) -> str:
+    # The BAI identifies one person; a name query would mix homonyms.
+    return f"a {author.bai}" if author.bai else f'a "{author.name}"'
 
 
 def _retry_after(resp: httpx.Response, attempt: int) -> float:

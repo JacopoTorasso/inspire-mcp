@@ -9,13 +9,24 @@ from inspire_mcp.semantic import BM25Reranker
 from .conftest import ATLAS_HIGGS, WITTEN, hits
 
 EXPECTED_TOOLS = {
-    "search_literature",
     "semantic_search",
+    "search_literature",
     "get_paper",
+    "find_similar_papers",
     "get_citing_papers",
     "get_references",
-    "get_bibtex",
+    "get_paper_figures",
+    "export_citations",
+    "search_collaboration",
     "search_authors",
+    "get_author_profile",
+    "get_author_papers",
+    "search_conferences",
+    "search_seminars",
+    "search_jobs",
+    "search_institutions",
+    "search_experiments",
+    "ping",
 }
 
 
@@ -35,8 +46,9 @@ async def test_get_paper_by_arxiv_id():
     route = respx.get(f"{BASE_URL}/literature").mock(return_value=httpx.Response(200, json=hits(ATLAS_HIGGS)))
     async with Client(server()) as client:
         result = await client.call_tool("get_paper", {"identifier": "1207.7214"})
-    assert route.calls.last.request.url.params["q"] == "arxiv:1207.7214"
+    assert route.calls[0].request.url.params["q"] == "arxiv:1207.7214"
     assert result.structured_content["recid"] == 1124337
+    assert result.structured_content["pdf_url"] == "https://arxiv.org/pdf/1207.7214"
 
 
 @respx.mock
@@ -84,19 +96,19 @@ async def test_semantic_search_tool_reports_retrieval_details():
 
 
 @respx.mock
-async def test_get_bibtex_requests_bibtex_format():
+async def test_export_citations_requests_bibtex_format():
     route = respx.get(f"{BASE_URL}/literature").mock(return_value=httpx.Response(200, text="@article{ATLAS:2012yve,}"))
     async with Client(server()) as client:
-        result = await client.call_tool("get_bibtex", {"identifiers": ["1207.7214", "hep-th/9711200"]})
+        result = await client.call_tool("export_citations", {"identifiers": ["1207.7214", "hep-th/9711200"]})
     req = route.calls.last.request
     assert req.url.params["q"] == "arxiv:1207.7214 or arxiv:hep-th/9711200"
-    assert req.headers["accept"] == "application/x-bibtex"
+    assert req.headers["accept"] == "*/*" and req.url.params["format"] == "bibtex"
     assert result.content[0].text.startswith("@article")
 
 
 async def test_bibtex_rejects_empty_list():
     async with Client(server()) as client:
-        result = await client.call_tool("get_bibtex", {"identifiers": []})
+        result = await client.call_tool("export_citations", {"identifiers": []})
     assert result.is_error
 
 

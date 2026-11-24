@@ -2,6 +2,23 @@
 
 All notable changes. Versions follow [semantic versioning](https://semver.org).
 
+## 0.5.0
+
+Broader coverage and easier to try.
+
+* New tools: `find_similar_papers`, `get_paper_figures`, `export_citations` (BibTeX, LaTeX EU and US,
+  replaces `get_bibtex`), `search_collaboration`, `get_author_profile` (h-index, citations, distribution),
+  `get_author_papers` (with `max_authors` to skip large collaborations), `search_conferences`,
+  `search_seminars`, `search_jobs`, `search_institutions`, `search_experiments`, `ping`: 18 tools in all.
+* `get_paper` adds keywords, the arXiv PDF and open-access full texts; citing papers and references
+  are paginated.
+* Command line: `inspire-mcp search`, `paper`, `doctor` and `config` work without any AI client.
+* HTTP: host allowlist for DNS rebinding protection, per-client rate limit with `Retry-After`,
+  `X-Forwarded-For` behind a trusted proxy, `PORT` honoured.
+* Upcoming events with a keyword are filtered by date on the server side: INSPIRE combines free text
+  and date ranges unreliably.
+* README rewritten for first-time users.
+
 ## 0.4.0
 
 Production readiness.

@@ -3,7 +3,7 @@
     uv run --extra semantic python examples/demo.py ["your question"]
 
 Starts the server as a subprocess over stdio (exactly what Claude Desktop or Claude Code do),
-then: semantic_search for the question, get_paper on the top hit, get_citing_papers, get_bibtex.
+then: semantic_search for the question, get_paper on the top hit, get_citing_papers, export_citations.
 """
 
 import asyncio
@@ -36,8 +36,8 @@ async def main(question: str) -> None:
         for p in citing["results"]:
             print(f"  - {p['title'][:90]} ({p['year']})")
 
-        print("\n> get_bibtex")
-        bibtex = (await mcp.call_tool("get_bibtex", {"identifiers": [top["arxiv_id"]]})).content[0].text
+        print("\n> export_citations")
+        bibtex = (await mcp.call_tool("export_citations", {"identifiers": [top["arxiv_id"]]})).content[0].text
         print("  " + "\n  ".join(bibtex.strip().splitlines()[:4]) + "\n  ...")
 
 

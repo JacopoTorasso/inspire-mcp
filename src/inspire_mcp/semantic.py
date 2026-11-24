@@ -323,3 +323,28 @@ async def semantic_search(
         reranker=reranker.name,
         fusion="rrf(reranker, inspire)" if fuse_with_inspire else "reranker only",
     )
+
+
+async def similar_papers(
+    client: InspireClient, paper: Paper, k: int = 10, pool: int = 50, reranker: Reranker | None = None
+) -> SemanticResult:
+    """Papers on the same subject: candidates from the title and keywords, ranked against the abstract."""
+    seed = " ".join([paper.title, *paper.keywords[:4]])
+    query_text = f"{paper.title}. {paper.abstract or ''}"[:600]
+    reranker = reranker or BM25Reranker()
+    docs, relaxed, strict_total = await candidates(client, seed, pool + 1)
+    docs = [d for d in docs if d.recid != paper.recid][:pool]
+    scores = await asyncio.to_thread(reranker.scores, query_text, docs) if docs else []
+    by_score = [d.recid for d, _ in sorted(zip(docs, scores, strict=True), key=lambda x: -x[1])]
+    fuse = getattr(reranker, "fuse_with_inspire", True)
+    order = rrf(by_score, [d.recid for d in docs]) if fuse else by_score
+    lookup = {d.recid: d for d in docs}
+    return SemanticResult(
+        papers=[lookup[r] for r in order[:k]],
+        scores={d.recid: round(s, 4) for d, s in zip(docs, scores, strict=True)},
+        inspire_query=relaxed,
+        pool_size=len(docs),
+        strict_hits=strict_total,
+        reranker=reranker.name,
+        fusion="rrf(reranker, inspire)" if fuse else "reranker only",
+    )

@@ -75,7 +75,7 @@ async def test_tool_calls_are_recorded_in_metrics():
     metrics = Metrics()
     async with Client(build_server(InspireClient(min_interval=0), metrics=metrics)) as client:
         await client.call_tool("search_literature", {"query": "higgs"})
-        await client.call_tool("get_bibtex", {"identifiers": []})
+        await client.call_tool("export_citations", {"identifiers": []})
     body = metrics.render()
     assert 'tool="search_literature",outcome="upstream_error"} 1' in body
-    assert 'tool="get_bibtex",outcome="error"} 1' in body
+    assert 'tool="export_citations",outcome="error"} 1' in body
