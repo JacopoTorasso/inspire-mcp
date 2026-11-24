@@ -40,7 +40,9 @@ async def test_reranking_does_not_block_other_requests():
             done["search"] = time.perf_counter() - start
 
         await asyncio.gather(slow(), fast())
-    assert done["search"] < 0.3, done
+    # The property that matters, independent of machine load: the fast call does not wait for the
+    # slow one. With a blocked event loop it would finish after it.
+    assert done["search"] < done["semantic"], done
     assert done["semantic"] >= 0.5
 
 

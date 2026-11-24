@@ -13,7 +13,7 @@ from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
 from datetime import date
 from functools import wraps
-from typing import Any, Literal
+from typing import Any, Literal, ParamSpec, TypeVar
 
 from mcp.server.mcpserver import MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
@@ -46,6 +46,8 @@ from .semantic import (
 )
 
 log = logging.getLogger("inspire_mcp")
+P = ParamSpec("P")
+R = TypeVar("R")
 
 INSTRUCTIONS = """\
 Tools over INSPIRE-HEP, the literature database of high energy physics.
@@ -66,7 +68,7 @@ READ_ONLY = ToolAnnotations(read_only_hint=True, open_world_hint=True)
 SortArg = Literal["mostrecent", "mostcited"] | None
 
 
-def _instrumented[**P, R](metrics: Metrics) -> Callable[[Callable[P, Awaitable[R]]], Callable[P, Awaitable[R]]]:
+def _instrumented(metrics: Metrics) -> Callable[[Callable[P, Awaitable[R]]], Callable[P, Awaitable[R]]]:
     """Record latency and outcome of every tool call; turn API failures into MCP tool errors."""
 
     def decorator(func: Callable[P, Awaitable[R]]) -> Callable[P, Awaitable[R]]:

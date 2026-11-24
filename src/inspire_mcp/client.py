@@ -226,7 +226,8 @@ def identifier_query(identifier: str) -> str:
         return f'doi:"{ident}"'
     if ARXIV_NEW.match(ident) or ARXIV_OLD.match(ident):
         ident = re.sub(r"^arxiv:", "", ident, flags=re.IGNORECASE)
-        return f"arxiv:{re.sub(r'v\d+$', '', ident)}"
+        bare = re.sub(r"v\d+$", "", ident)
+        return f"arxiv:{bare}"
     raise InspireError(f"Unrecognised identifier {identifier!r}: expected an INSPIRE recid, arXiv id or DOI")
 
 

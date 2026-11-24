@@ -2,6 +2,13 @@
 
 All notable changes. Versions follow [semantic versioning](https://semver.org).
 
+## 0.5.1
+
+* Runs on Python 3.10 to 3.13 (was 3.12+): `uvx` failed on machines whose default Python is older.
+  CI now tests all four versions.
+* The concurrency test checks ordering instead of a wall-clock threshold, so it no longer flakes on a
+  loaded machine.
+
 ## 0.5.0
 
 Broader coverage and easier to try.

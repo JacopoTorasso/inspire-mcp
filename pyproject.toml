@@ -1,6 +1,6 @@
 [project]
 name = "inspire-mcp"
-version = "0.5.0"
+version = "0.5.1"
 description = "Ask AI assistants about high energy physics literature in plain language: an MCP server for INSPIRE-HEP with measured semantic search"
 readme = "README.md"
 license = "MIT"
@@ -10,6 +10,8 @@ classifiers = [
     "Intended Audience :: Science/Research",
     "Topic :: Scientific/Engineering :: Physics",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Typing :: Typed",
@@ -17,7 +19,7 @@ classifiers = [
 authors = [
     { name = "Jacopo Torasso" }
 ]
-requires-python = ">=3.12"
+requires-python = ">=3.10"
 dependencies = [
     "httpx>=0.27",
     "mcp>=2.3,<3",
@@ -27,11 +29,11 @@ dependencies = [
 [project.optional-dependencies]
 semantic = [
     "fastembed>=0.9.1",
-    "numpy>=2.5.5",
+    "numpy>=1.26",
 ]
 eval = [
     "fastembed>=0.9.1",
-    "numpy>=2.5.5",
+    "numpy>=1.26",
     "anthropic>=1.0",
 ]
 
@@ -42,7 +44,7 @@ build-backend = "uv_build"
 [dependency-groups]
 dev = [
     "mypy>=2.4.1",
-    "numpy>=2.5.5",
+    "numpy>=1.26",
     "pytest>=9.2.0",
     "pytest-asyncio>=1.5.0",
     "pytest-cov>=7.1.0",
@@ -65,13 +67,13 @@ testpaths = ["tests"]
 
 [tool.ruff]
 line-length = 120
-target-version = "py312"
+target-version = "py310"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
 
 [tool.mypy]
-python_version = "3.12"
+python_version = "3.10"
 ignore_missing_imports = true
 warn_unused_ignores = true
 files = ["src"]

@@ -2,6 +2,8 @@
 
 [![ci](https://github.com/JacopoTorasso/inspire-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/JacopoTorasso/inspire-mcp/actions/workflows/ci.yml)
 [![eval](https://github.com/JacopoTorasso/inspire-mcp/actions/workflows/eval.yml/badge.svg)](https://github.com/JacopoTorasso/inspire-mcp/actions/workflows/eval.yml)
+[![PyPI](https://img.shields.io/pypi/v/inspire-mcp)](https://pypi.org/project/inspire-mcp/)
+[![python](https://img.shields.io/pypi/pyversions/inspire-mcp)](https://pypi.org/project/inspire-mcp/)
 [![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 **Ask your AI assistant about high energy physics literature, in plain language.**
@@ -80,9 +82,6 @@ claude mcp add inspire -- uvx --from "inspire-mcp[semantic]" inspire-mcp
 
 **Cursor, VS Code, and other MCP clients** use the same `command` and `args`. Run
 `inspire-mcp config` to print the snippets.
-
-> Until the first release is on PyPI, replace `inspire-mcp[semantic]` with
-> `inspire-mcp[semantic] @ git+https://github.com/JacopoTorasso/inspire-mcp`.
 
 ## Tools
 
