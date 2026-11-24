@@ -21,6 +21,12 @@ Rules for the longtail questions, checked by script before freezing the file:
 so the rule can be verified on every run. The famous set was written before the rule existed and
 does not follow it.
 
+## Held-out set
+
+`queries_heldout.jsonl`: 40 more long-tail papers (`sample_longtail.py --seed 2027 --exclude` the
+development files), questions written under the same rules and committed before any result. It is used
+once per decision, to confirm a choice made on the development sets, never to make one.
+
 ## Agentic baseline
 
 `agent_eval.py` runs the same questions through an LLM agent (Claude API, model chosen with `--model`)

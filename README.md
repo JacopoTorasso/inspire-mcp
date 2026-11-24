@@ -8,8 +8,9 @@
 
 inspire-mcp connects assistants such as Claude to [INSPIRE-HEP](https://inspirehep.net), the database
 of high energy physics papers, authors, conferences and jobs. Describe the paper you are looking for
-in your own words: the server finds it and puts the right one first 70% of the time, against 7% for
-the same question typed into INSPIRE's search box ([how this is measured](docs/evaluation.md)).
+in your own words: on papers it had never seen during development, the server puts the right one
+first 60% of the time, 85% when an assistant like Claude drives it, against a few percent for the same
+question typed into INSPIRE's search box ([how this is measured](docs/evaluation.md)).
 
 ## What you can ask
 
@@ -114,14 +115,15 @@ overview of a topic.
 
 ## How good is the search?
 
-Measured on 40 papers picked at random from INSPIRE, each described by a question that does not
-repeat its title:
+Measured on papers picked at random from INSPIRE, each described by a question that does not repeat
+its title. The development set guided every design choice; the held-out set was frozen beforehand and
+used once, so it is the honest estimate:
 
-| Approach | Right paper first | In the top 10 |
+| Approach | Right paper first, development (40) | Right paper first, held out (40) |
 |---|---|---|
-| Question typed into INSPIRE's search | 7% | 10% |
-| Keywords of the question, INSPIRE's ranking | 38% | 72% |
-| **inspire-mcp** (keywords, then a cross-encoder re-reads every abstract) | **70%** | **85%** |
+| Question typed into INSPIRE's search | 7% | not measured |
+| Keywords of the question, INSPIRE's ranking | 38% | 40% |
+| **inspire-mcp** (keywords, then a cross-encoder re-reads every abstract) | **70%** | **60%** |
 
 And when an AI assistant drives the search itself, the server still matters:
 

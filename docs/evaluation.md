@@ -75,6 +75,34 @@ authors or titles directly. That measures the model's memory, not retrieval, so 
 one that answers the question. The longtail questions avoid title words by design, which penalises
 title searches; it is also the situation of a user who does not know the title.
 
+## Can a different reranker do better? Comparison and held-out confirmation
+
+`eval/rerank_lab.py` freezes 100 candidates per question and compares cross-encoders on exactly the
+same candidates. Choices are made on the development sets (famous and longtail); the winner is then
+checked once on a **held-out set** of 40 further long-tail papers (seed 2027, questions written and
+committed before any result was seen, same rules).
+
+Development sets, MRR@10 and right paper first:
+
+| reranker | size | s per 50 candidates | famous MRR | longtail MRR | longtail first |
+|---|---|---|---|---|---|
+| ms-marco-MiniLM-L-6-v2 (default) | 80 MB | 2.1 | 0.31 | 0.76 | 70% |
+| ms-marco-MiniLM-L-12-v2 | 120 MB | 4.3 | 0.33 | 0.79 | 75% |
+| jina-reranker-v1-tiny-en | 130 MB | 2.5 | 0.31 | 0.71 | 65% |
+| jina-reranker-v1-turbo-en | 150 MB | 3.8 | 0.32 | 0.69 | 60% |
+| bge-reranker-base | 1 GB | 14.3 | 0.25 | 0.72 | 65% |
+
+MiniLM-L12 came out best on both development sets, but not significantly (p = 0.20 and 0.25).
+Doubling the pool to 100 candidates, fusing cross-encoders, or adding embeddings brought nothing.
+
+**Held-out confirmation (40 new papers):** MiniLM-L12 and MiniLM-L6 are equivalent (right paper first
+60% for both, MRR 0.67 against 0.66, p = 0.82), against 40% for INSPIRE's own order. The development
+gain was noise, so the default stays MiniLM-L6, which is twice as fast. Two lessons:
+
+* the larger model was the worst: bge-reranker-base is seven times slower and loses on both sets;
+* the held-out set is also the honest estimate of quality on unseen papers: 60% right first, lower
+  than the 70% measured on the set the design choices were made on.
+
 ## Offline: fixed corpus of every INSPIRE record with 1500+ citations (1396 papers, famous set)
 
 | system | R@1 | R@10 | MRR@10 [95% CI] |
@@ -116,5 +144,6 @@ title searches; it is also the situation of a user who does not know the title.
 
 ## Next steps
 
+* A reranker fine-tuned on physics text: general web-search rerankers have plateaued here.
 * Questions from real usage logs, and a larger longtail set to narrow the intervals.
 * Physics-tuned rerankers compared on quality, latency and memory.
