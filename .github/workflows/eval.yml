@@ -12,7 +12,7 @@ jobs:
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v10
+      - uses: astral-sh/setup-uv@v10.4.0
       - run: uv sync --frozen --extra eval
       - run: uv run python eval/run_eval.py | tee eval-summary.md
       - run: cat eval-summary.md >> "$GITHUB_STEP_SUMMARY"
