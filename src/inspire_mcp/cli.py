@@ -25,6 +25,7 @@ from . import __version__
 from .client import InspireClient, InspireError
 
 COMMANDS = ("search", "paper", "doctor", "config")
+MIN_PYTHON = (3, 10)  # keep in sync with requires-python in pyproject.toml (checked by a test)
 WIDTH = min(shutil.get_terminal_size((100, 20)).columns, 110)
 
 
@@ -106,7 +107,13 @@ async def _doctor() -> int:
             print(f"    fix: {fix}")
 
     print(f"inspire-mcp {__version__}\n")
-    line(sys.version_info >= (3, 12), "Python", sys.version.split()[0], "install Python 3.12 or newer, or use uvx")
+    minimum = ".".join(map(str, MIN_PYTHON))
+    line(
+        sys.version_info >= MIN_PYTHON,
+        "Python",
+        sys.version.split()[0],
+        f"install Python {minimum} or newer, or use uvx",
+    )
     try:
         async with InspireClient(cache_ttl=0) as client:
             start = time.perf_counter()

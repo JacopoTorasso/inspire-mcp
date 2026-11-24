@@ -2,6 +2,11 @@
 
 All notable changes. Versions follow [semantic versioning](https://semver.org).
 
+## 0.5.2
+
+* `inspire-mcp doctor` reported Python 3.10 and 3.11 as unsupported; the minimum now comes from one
+  constant, and a test keeps it equal to `requires-python`.
+
 ## 0.5.1
 
 * Runs on Python 3.10 to 3.13 (was 3.12+): `uvx` failed on machines whose default Python is older.

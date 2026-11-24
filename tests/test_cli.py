@@ -71,3 +71,12 @@ def test_main_dispatches_subcommands_and_keeps_server_default(monkeypatch):
     with pytest.raises(SystemExit):
         main(["config"])
     assert called["cli"] == ["config"]
+
+
+def test_doctor_minimum_python_matches_pyproject():
+    import re
+    from pathlib import Path
+
+    pyproject = (Path(__file__).parents[1] / "pyproject.toml").read_text()
+    declared = re.search(r'requires-python = ">=(\d+)\.(\d+)"', pyproject)
+    assert declared and tuple(map(int, declared.groups())) == cli.MIN_PYTHON

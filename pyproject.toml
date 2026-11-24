@@ -1,6 +1,6 @@
 [project]
 name = "inspire-mcp"
-version = "0.5.1"
+version = "0.5.2"
 description = "Ask AI assistants about high energy physics literature in plain language: an MCP server for INSPIRE-HEP with measured semantic search"
 readme = "README.md"
 license = "MIT"
