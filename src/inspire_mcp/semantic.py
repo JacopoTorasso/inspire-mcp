@@ -24,7 +24,7 @@ from collections import Counter
 from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Protocol
+from typing import Literal, Protocol
 
 from .client import InspireClient, InspireError, Paper
 
@@ -53,6 +53,21 @@ def content_terms(question: str, max_terms: int = MAX_TERMS) -> list[str]:
     return list(seen)[:max_terms]
 
 
+def phrase_terms(question: str) -> list[str]:
+    """Pairs of content words adjacent in the question (no stopword in between), e.g. 'extra dimension'."""
+    out: dict[str, None] = {}
+    prev = None
+    for tok in TOKEN.findall(question):
+        low = tok.lower().strip("-")
+        if len(low) < 2 or low in STOPWORDS or low in INSPIRE_RESERVED:
+            prev = None
+            continue
+        if prev:
+            out[f"{prev} {low}"] = None
+        prev = low
+    return list(out)
+
+
 def _quote(term: str, always: bool = False) -> str:
     # Hyphens and dots confuse the INSPIRE parser ("d-brane" reads as the date operator "d"), so quote them.
     return f'"{term}"' if always or not term.isalnum() else term
@@ -68,6 +83,9 @@ def doc_text(p: Paper, max_chars: int = 1200) -> str:
 
 class Reranker(Protocol):
     name: str
+    # Whether to fuse the reranker's order with INSPIRE's by RRF. Measured per reranker in eval/:
+    # fusion helps the weaker rerankers and hurts the cross-encoder.
+    fuse_with_inspire: bool
 
     def scores(self, query: str, docs: Sequence[Paper]) -> list[float]: ...
 
@@ -80,6 +98,7 @@ class BM25Reranker:
     """Okapi BM25 over the candidate set. Cheap and dependency free, but IDF on a small pool is noisy."""
 
     name = "bm25"
+    fuse_with_inspire = True
 
     def __init__(self, k1: float = 1.5, b: float = 0.75) -> None:
         self.k1, self.b = k1, b
@@ -107,6 +126,7 @@ class DenseReranker:
     """Cosine similarity of bge embeddings (fastembed, ONNX on CPU) with an on-disk vector cache."""
 
     QUERY_PREFIX = "Represent this sentence for searching relevant passages: "
+    fuse_with_inspire = True
 
     def __init__(self, model: str = "BAAI/bge-small-en-v1.5", cache_path: Path | None = None) -> None:
         try:
@@ -160,6 +180,8 @@ class CrossEncoderReranker:
     """Scores (question, abstract) pairs jointly with a cross-encoder: slower per pair than comparing
     cached embeddings, but much better at telling apart abstracts on the same topic."""
 
+    fuse_with_inspire = False
+
     def __init__(self, model: str = "Xenova/ms-marco-MiniLM-L-6-v2") -> None:
         try:
             from fastembed.rerank.cross_encoder import TextCrossEncoder
@@ -176,10 +198,13 @@ class CrossEncoderReranker:
 
 
 def default_reranker() -> Reranker:
-    try:
-        return DenseReranker()
-    except RuntimeError:
-        return BM25Reranker()
+    """Best reranker available: cross-encoder, then dense embeddings, then BM25 (see README, Findings)."""
+    for factory in (CrossEncoderReranker, DenseReranker):
+        try:
+            return factory()
+        except RuntimeError:
+            continue
+    return BM25Reranker()
 
 
 def rrf(*rankings: Sequence[int], k: int = RRF_K) -> list[int]:
@@ -201,35 +226,64 @@ class SemanticResult:
     fusion: str
 
 
+Strategy = Literal["or", "multi"]
+
+
+def interleave(*lists: Sequence[Paper]) -> list[Paper]:
+    """Round-robin merge without duplicates, so each source keeps its best results in the pool."""
+    merged: dict[int, Paper] = {}
+    for i in range(max((len(x) for x in lists), default=0)):
+        for x in lists:
+            if i < len(x):
+                merged.setdefault(x[i].recid, x[i])
+    return list(merged.values())
+
+
+async def _search_or_empty(client: InspireClient, query: str, size: int) -> list[Paper]:
+    if not query or size <= 0:
+        return []
+    try:
+        _, papers = await client.search_literature(query, size=size)
+        return papers
+    except InspireError:
+        return []
+
+
 async def candidates(
-    client: InspireClient, question: str, pool: int = 50, influential: int = 0, min_citations: int = 250
+    client: InspireClient,
+    question: str,
+    pool: int = 50,
+    influential: int = 0,
+    min_citations: int = 250,
+    strategy: Strategy = "or",
 ) -> tuple[list[Paper], str, int]:
     """Candidate pool from the live INSPIRE index.
 
     Strict AND results first (high precision when they exist), then the relaxed OR query by INSPIRE
-    relevance, then optionally `influential` relaxed-query hits restricted to well cited papers, a prior
-    for questions about foundational work that relevance ranking alone tends to bury.
+    relevance. Strategy "multi" interleaves the OR results with quoted adjacent-word phrases and a
+    title-only OR query, three reformulations that miss different papers. With `influential`, that many
+    candidates come from the relaxed query restricted to well cited papers, a prior for questions about
+    foundational work that relevance ranking alone tends to bury.
     """
     try:
         strict_total, strict = await client.search_literature(question, size=min(pool, 25))
     except InspireError:  # the raw question is not valid INSPIRE syntax, e.g. unbalanced quotes
         strict_total, strict = 0, []
     relaxed = relaxed_query(question)
-    loose: list[Paper] = []
-    cited: list[Paper] = []
-    if relaxed:
-        try:
-            _, loose = await client.search_literature(relaxed, size=pool)
-        except InspireError:
-            relaxed = relaxed_query(question, quote_all=True)
-            try:
-                _, loose = await client.search_literature(relaxed, size=pool)
-            except InspireError:
-                loose = []
-        if influential and loose:
-            _, cited = await client.search_literature(f"({relaxed}) and topcite {min_citations}+", size=influential)
+    loose = await _search_or_empty(client, relaxed, pool)
+    if relaxed and not loose:
+        relaxed = relaxed_query(question, quote_all=True)
+        loose = await _search_or_empty(client, relaxed, pool)
+    if strategy == "multi":
+        phrases = " or ".join(f'"{p}"' for p in phrase_terms(question))
+        titles = " or ".join(f"t {_quote(t)}" for t in content_terms(question))
+        loose = interleave(
+            loose, await _search_or_empty(client, phrases, pool // 2), await _search_or_empty(client, titles, pool // 2)
+        )
+    cited = await _search_or_empty(client, f"({relaxed}) and topcite {min_citations}+", influential) if relaxed else []
+    head = pool - len(cited)
     merged: dict[int, Paper] = {}
-    for p in [*strict, *loose[: pool - len(cited)], *cited, *loose[pool - len(cited) :]]:
+    for p in [*strict, *loose[:head], *cited, *loose[head:]]:
         merged.setdefault(p.recid, p)
     return list(merged.values())[:pool], relaxed, strict_total
 
@@ -240,11 +294,14 @@ async def semantic_search(
     k: int = 10,
     pool: int = 50,
     reranker: Reranker | None = None,
-    fuse_with_inspire: bool = True,
+    fuse_with_inspire: bool | None = None,
     influential: int = 0,
+    strategy: Strategy = "or",
 ) -> SemanticResult:
     reranker = reranker or BM25Reranker()
-    docs, relaxed, strict_total = await candidates(client, question, pool, influential=influential)
+    if fuse_with_inspire is None:
+        fuse_with_inspire = getattr(reranker, "fuse_with_inspire", True)
+    docs, relaxed, strict_total = await candidates(client, question, pool, influential=influential, strategy=strategy)
     scores = reranker.scores(question, docs) if docs else []
     by_score = [d.recid for d, _ in sorted(zip(docs, scores, strict=True), key=lambda x: -x[1])]
     inspire_order = [d.recid for d in docs]

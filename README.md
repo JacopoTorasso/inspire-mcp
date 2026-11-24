@@ -38,23 +38,23 @@ Design choices:
 ## How semantic_search works
 
 INSPIRE combines plain words with AND, so most natural-language questions return nothing
-(37 of the 60 benchmark questions). `semantic_search` therefore runs two stages without hosting any index:
+(70 of the 100 benchmark questions). `semantic_search` runs two stages without hosting any index:
 
 1. **Candidates from the live index**: the strict query, then the question's content words joined
    with OR (terms with hyphens or dots are quoted, since `d-brane` otherwise parses as the date
-   operator). With `prefer_influential=true`, half of the pool comes from the same query restricted
-   to papers with 250+ citations, for questions about foundational work.
-2. **Reranking**: candidates are scored against the question with `bge-small-en-v1.5` embeddings
-   (vectors cached on disk by record id), a cross-encoder (`--reranker cross-encoder`), or BM25 when
-   the optional models are not installed, and the result is fused with INSPIRE's own order by
-   reciprocal rank fusion.
+   operator). With `prefer_influential=true`, half of the 50 candidates come from the same query
+   restricted to papers with 250+ citations, for questions about foundational work.
+2. **Reranking**: a cross-encoder (`ms-marco-MiniLM-L-6-v2`) reads the question together with each
+   title and abstract and orders the candidates. Without the optional models, it falls back to
+   `bge-small-en-v1.5` embeddings or BM25, each fused with INSPIRE's own order by reciprocal rank
+   fusion. Every one of these defaults comes from the measurements below.
 
 ## Run
 
 ```bash
 uv sync --extra semantic                 # without the extra, reranking falls back to BM25
 uv run inspire-mcp                       # stdio
-uv run inspire-mcp --transport streamable-http --reranker cross-encoder   # http://127.0.0.1:8000/mcp
+uv run inspire-mcp --transport streamable-http --reranker dense   # http://127.0.0.1:8000/mcp
 
 claude mcp add inspire -- uv --directory /path/to/inspire-mcp run inspire-mcp   # Claude Code
 ```
@@ -69,7 +69,7 @@ kubectl apply -f deploy/k8s/deployment.yaml                         # non-root, 
 
 ## Quality
 
-* `uv run pytest`: 35 offline tests, HTTP mocked with respx, tools exercised through an in-process MCP
+* `uv run pytest`: 40 offline tests, HTTP mocked with respx, tools exercised through an in-process MCP
   client, about 90% coverage; `uv run ruff check .`
 * CI (`.github/workflows/ci.yml`): lint, tests with a coverage gate, both Docker images built and
   probed on `/healthz`, Kubernetes manifests validated with kubeconform
@@ -78,74 +78,82 @@ kubectl apply -f deploy/k8s/deployment.yaml                         # non-root, 
 
 ## Retrieval evaluation
 
-`eval/run_eval.py` is a known-item benchmark: 60 natural-language questions
-(`eval/queries.jsonl`), each pointing to one paper by arXiv id, all verified against INSPIRE.
-Several are deliberately hard pairs: PYTHIA 6.4, 8.1 and 8.2, Planck 2015 and 2018, the original
-AdS/CFT paper and the review that followed it. Metrics are recall at k and MRR@10, with 95% bootstrap
-intervals and paired sign-flip permutation tests between systems. Full per-query ranks are in
-`eval/results/`.
+Known-item benchmark: each natural-language question points to one paper. Two query sets, so that
+conclusions do not rest on one kind of question (protocol in [`eval/README.md`](eval/README.md)):
+
+* **famous**: 60 well-cited papers (709 to 24k citations), including confusable pairs such as
+  PYTHIA 6.4 / 8.1 / 8.2 and Planck 2015 / 2018;
+* **longtail**: 40 papers with 20 to 200 citations sampled at random with a fixed seed, one question
+  each written from the abstract under fixed rules (no three consecutive title words, checked by script).
+
+Metrics: recall at k and MRR@10 with 95% bootstrap intervals; systems are compared with paired
+sign-flip permutation tests. Per-question ranks are in `eval/results/`.
 
 ```bash
-uv run --extra eval python eval/run_eval.py
+uv run --extra eval python eval/run_eval.py      # about 35 min on a laptop CPU the first time
 ```
 
-### Offline: fixed corpus of every INSPIRE record with 1500+ citations (1396 papers, 58 queries)
+### Live INSPIRE, whole database, 50 candidates
 
-| system | R@1 | R@10 [95% CI] | MRR@10 [95% CI] |
+| system | famous MRR@10 [95% CI] | famous R@10 | longtail MRR@10 [95% CI] | longtail R@1 | longtail R@10 |
+|---|---|---|---|---|---|
+| raw question | 0.12 [0.05, 0.20] | 0.13 | 0.08 [0.01, 0.18] | 0.07 | 0.10 |
+| OR query, INSPIRE ranking | 0.32 [0.22, 0.43] | 0.45 | 0.49 [0.35, 0.63] | 0.38 | 0.72 |
+| OR + dense + rrf | 0.34 [0.24, 0.45] | 0.45 | 0.59 [0.46, 0.72] | 0.50 | 0.85 |
+| **OR + cross-encoder (default)** | 0.30 [0.20, 0.41] | 0.43 | **0.76** [0.63, 0.87] | **0.70** | 0.85 |
+| influential pool + cross-encoder | 0.36 [0.26, 0.46] | 0.55 | 0.73 [0.59, 0.85] | 0.68 | 0.80 |
+| influential pool + dense | 0.36 [0.27, 0.47] | 0.58 | 0.56 [0.43, 0.70] | 0.45 | 0.78 |
+| multi-query pool + dense + rrf | 0.34 [0.24, 0.45] | 0.57 | 0.49 [0.36, 0.62] | 0.38 | 0.75 |
+
+Share of questions whose paper is among the 50 candidates:
+
+| pool | famous | longtail |
+|---|---|---|
+| OR query | 0.53 | 0.88 |
+| multi-query (OR + quoted phrases + title-only, interleaved) | 0.58 | 0.80 |
+| influential (half from 250+ citations) | **0.75** | 0.83 |
+
+Median reranking time for 50 new candidates on a laptop CPU: 2.6 to 2.8 s for the cross-encoder,
+3.3 s for embeddings (46 ms when their vectors are already cached).
+
+### Offline: fixed corpus of every INSPIRE record with 1500+ citations (1396 papers, famous set)
+
+| system | R@1 | R@10 | MRR@10 [95% CI] |
 |---|---|---|---|
-| bm25 | 0.64 | 0.93 [0.86, 0.98] | 0.75 [0.66, 0.84] |
-| dense (bge-small) | 0.74 | 0.98 [0.95, 1.00] | 0.82 [0.75, 0.90] |
-| hybrid (rrf) | 0.74 | 0.97 [0.91, 1.00] | 0.83 [0.75, 0.90] |
-| dense top 50, then cross-encoder | **0.86** | 0.98 [0.95, 1.00] | **0.90** [0.82, 0.96] |
-
-### Live: whole INSPIRE database (60 queries, 50 candidates)
-
-| system | R@1 | R@10 [95% CI] | MRR@10 [95% CI] |
-|---|---|---|---|
-| raw question | 0.12 | 0.13 [0.05, 0.22] | 0.12 [0.05, 0.21] |
-| OR query, INSPIRE ranking | 0.25 | 0.45 [0.33, 0.58] | 0.32 [0.22, 0.43] |
-| OR + BM25 | 0.08 | 0.42 [0.28, 0.55] | 0.18 [0.11, 0.26] |
-| OR + dense + rrf (default) | 0.28 | 0.45 [0.33, 0.57] | 0.34 [0.24, 0.46] |
-| OR + cross-encoder | 0.25 | 0.43 [0.32, 0.57] | 0.30 [0.20, 0.42] |
-| influential pool + dense + rrf | 0.28 | 0.47 [0.33, 0.58] | 0.35 [0.24, 0.46] |
-| influential pool + cross-encoder | 0.25 | **0.55** [0.42, 0.68] | 0.36 [0.25, 0.46] |
-| influential pool + cross-encoder + rrf | 0.25 | 0.45 [0.33, 0.57] | 0.32 [0.22, 0.44] |
-
-Share of questions whose paper is among the 50 candidates: 0.53 with the OR query, 0.75 with the
-influential pool. Median reranking time for 50 candidates on a laptop CPU: 36 ms with cached
-embeddings (about 3 s the first time), 2.7 s for the cross-encoder.
+| bm25 | 0.64 | 0.93 | 0.75 [0.66, 0.84] |
+| dense (bge-small) | 0.74 | 0.98 | 0.82 [0.74, 0.90] |
+| hybrid (rrf) | 0.74 | 0.97 | 0.83 [0.75, 0.90] |
+| dense top 50, then cross-encoder | **0.86** | 0.98 | **0.90** [0.82, 0.96] |
 
 ### Findings
 
-* **Candidate generation is the bottleneck on the live index, not reranking.** Only the changes to
-  the candidate pool are significant: OR query vs raw question (MRR p < 0.001), influential vs plain
-  pool with the same reranker (p = 0.004). No reranker beats INSPIRE's own order of the OR results
-  significantly (all p > 0.25). A reranker cannot recover a paper that is not in the pool.
-* **When the pool is good, a cross-encoder pays off.** On the offline corpus it lifts R@1 from 0.74
-  to 0.86 over embeddings alone (p = 0.04; MRR p = 0.02), at 2.7 s per 50 candidates. Dense vs
-  BM25 is not significant there (p = 0.11).
-* **Fusion can hurt.** With the influential pool, fusing the cross-encoder with INSPIRE's order drops
-  R@10 from 0.55 to 0.45: the well-cited candidates are appended after the relevance results, so
-  their INSPIRE rank is poor by construction.
-* **Negative result:** keeping only the rarest terms of the question as an AND query finds the paper
-  in 23% of cases: paraphrased questions use words the target abstract does not.
-* Larger OR pools help with diminishing returns: 0.53 of papers in the pool at 50, 0.62 at 100,
-  0.70 at 250.
+* **What limits retrieval depends on the question, and a one-sided benchmark gave the wrong answer.**
+  With the famous set alone, no reranker beat INSPIRE's order (all p > 0.25) and candidate generation
+  looked like the only lever. On typical papers the candidates are already there (88% of the time) and
+  reranking is the lever: embeddings lift MRR from 0.49 to 0.59 (p = 0.014) and the cross-encoder to
+  0.76 (p = 0.004 against embeddings), with the right paper first 70% of the time instead of 38%.
+* **For famous papers the candidate pool is the bottleneck.** Their questions match thousands of
+  follow-up papers. Reserving half of the pool to well-cited papers raises pool recall from 0.53 to
+  0.75 (p < 0.001) and does not hurt the longtail set (p = 0.50), so it is exposed as
+  `prefer_influential`, chosen by the model from the user's intent.
+* **The cross-encoder is the default**: best on typical papers, no significant loss on famous ones,
+  and no slower than embeddings once the candidates are new, which is the normal case for a live query.
+  On the offline corpus it also lifts R@1 from 0.74 to 0.86 (MRR p = 0.02).
+* **Negative results, kept on purpose:** the multi-query pool (adding quoted phrases and title-only
+  queries) brings no significant gain on famous papers and loses on typical ones (MRR 0.49 vs 0.59,
+  p = 0.004), because it fills the pool with noise; keeping only the rarest words of the question as
+  an AND query finds the paper in 23% of cases.
 
 ### Limits
 
-* Every target is a well-cited paper (709 to 24k citations), because the questions had to have a
-  known answer. That favours the influential pool, which is why it is an opt-in tool argument chosen
-  by the model from the user's intent, not the default.
-* The questions were written by the author, who knew the target papers; 60 queries give wide
-  intervals (one query is worth 0.017).
-* Known-item search measures finding one paper, not answer quality or topical recall.
+* One author wrote all questions knowing the targets; 37% of the famous-set questions repeat three
+  consecutive title words (written before the rule existed), against 0% for the longtail set.
+* 40 to 60 questions per set give wide intervals; only large differences are significant.
+* Known-item search measures finding one paper, not topical recall or answer quality.
 * The cross-encoder is a general web-search model (MS MARCO), not trained on physics.
 
 ### Next steps
 
-* Better candidate generation: several reformulations of the question merged into one pool, and an
-  LLM baseline that writes INSPIRE syntax through the MCP tools, scored with this same harness.
-* Drop fusion for the influential pool if the effect holds for the dense reranker too.
-* Questions from real usage or from citation contexts, and targets that are not famous.
-* Domain-tuned embedding and reranking models compared on quality, latency and memory.
+* An LLM baseline that writes INSPIRE syntax through the MCP tools, scored with this same harness.
+* Questions from real usage logs, and a larger longtail set to narrow the intervals.
+* Physics-tuned rerankers compared on quality, latency and memory.

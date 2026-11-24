@@ -3,15 +3,20 @@
 Question: for natural-language questions a researcher might ask an AI assistant, how often does
 each retrieval strategy put the intended paper in the top k?
 
-Part A, offline (fixed corpus = every INSPIRE record with 1500+ citations, queries whose paper is in it):
-  bm25, dense (bge-small-en-v1.5), hybrid (reciprocal rank fusion)
-Part B, live INSPIRE index (all queries, whole database):
-  raw            the question sent as is to INSPIRE search
-  or             content words joined with OR, INSPIRE relevance ranking
-  or+bm25        the 'or' candidate pool reranked with BM25
-  or+dense       the pool reranked with dense embeddings
-  or+dense+rrf   dense order fused with INSPIRE order (what the semantic_search tool does)
-  infl+dense+rrf same, with part of the pool reserved to well cited papers (influential=25)
+Query sets
+  famous     queries.jsonl: 60 well-cited papers (709 to 24k citations), questions written by the author
+  longtail   queries_longtail.jsonl: 40 papers with 20-200 citations sampled at random by
+             sample_longtail.py, questions written with fixed rules (paraphrase, at most 20 words,
+             no three consecutive words from the title; the overlap is measured and reported)
+
+Part A, offline (famous set, fixed corpus = every INSPIRE record with 1500+ citations):
+  bm25, dense (bge-small-en-v1.5), hybrid (reciprocal rank fusion), dense top 50 then cross-encoder
+Part B, live INSPIRE index (both sets, whole database). Candidate pools:
+  or       content words joined with OR, INSPIRE relevance ranking
+  multi    OR results interleaved with quoted adjacent-word phrases and a title-only query
+  infl     OR results with half of the pool from papers with 250+ citations
+Each pool is reranked by dense embeddings or a cross-encoder, with or without reciprocal rank
+fusion with INSPIRE's order; `raw` sends the question unchanged.
 
 Usage:  uv run --extra eval python eval/run_eval.py [--refresh] [--pool 50]
 """
@@ -45,10 +50,26 @@ from inspire_mcp.semantic import (  # noqa: E402
 HERE = Path(__file__).parent
 CACHE = HERE / "cache"
 RESULTS = HERE / "results"
+QUERY_SETS = {"famous": "queries.jsonl", "longtail": "queries_longtail.jsonl"}
 CORPUS_QUERY = "topcite 1500+"
 KS = (1, 5, 10)
 BOOTSTRAP = 2000
 SEED = 13
+POOLS = ("or", "multi", "infl")
+LIVE_SYSTEMS = (
+    "raw", "or", "multi",
+    "or+dense+rrf", "multi+dense+rrf", "infl+dense+rrf", "infl+dense",
+    "or+xenc", "multi+xenc", "infl+xenc",
+)  # fmt: skip
+LIVE_TESTS = (
+    ("or", "raw"),
+    ("or+dense+rrf", "or"),
+    ("multi+dense+rrf", "or+dense+rrf"),
+    ("multi+xenc", "or+xenc"),
+    ("infl+dense+rrf", "or+dense+rrf"),
+    ("infl+dense", "infl+dense+rrf"),
+    ("or+xenc", "or+dense+rrf"),
+)
 
 
 # ---------- metrics ----------
@@ -74,6 +95,8 @@ def paired_permutation_p(a: list[float], b: list[float], rng: random.Random, n: 
     """Two-sided sign-flip test on per-query differences."""
     diffs = [x - y for x, y in zip(a, b, strict=True)]
     observed = abs(sum(diffs))
+    if observed == 0:
+        return 1.0
     hits = sum(abs(sum(d if rng.random() < 0.5 else -d for d in diffs)) >= observed - 1e-12 for _ in range(n))
     return (hits + 1) / (n + 1)
 
@@ -89,11 +112,20 @@ def summarize(ranks: dict[str, list[int | None]], rng: random.Random) -> dict[st
     return out
 
 
+def title_overlap(query: str, title: str, n: int = 3) -> bool:
+    """True when the question repeats n consecutive words of the target title."""
+    words = lambda t: re.findall(r"[a-z0-9]+", t.lower())  # noqa: E731
+    qw, tw = words(query), words(title)
+    grams = {tuple(tw[i : i + n]) for i in range(len(tw) - n + 1)}
+    return any(tuple(qw[i : i + n]) in grams for i in range(len(qw) - n + 1))
+
+
 # ---------- data ----------
 
 
-def load_queries() -> list[dict]:
-    return [json.loads(line) for line in (HERE / "queries.jsonl").read_text().splitlines() if line.strip()]
+def load_queries(name: str) -> list[dict]:
+    path = HERE / QUERY_SETS[name]
+    return [json.loads(line) for line in path.read_text().splitlines() if line.strip()]
 
 
 async def fetch_corpus(client: InspireClient) -> list[dict]:
@@ -116,24 +148,27 @@ async def resolve_gold(client: InspireClient, queries: list[dict]) -> None:
 async def live_pools(client: InspireClient, queries: list[dict], pool: int) -> dict[str, dict]:
     out = {}
     for q in queries:
-        t0 = time.perf_counter()
         _, raw = await client.search_literature(q["query"], size=10)
-        raw_s = time.perf_counter() - t0
         _, loose = await client.search_literature(relaxed_query(q["query"]), size=pool)
-        docs, _, strict_total = await candidates(client, q["query"], pool)
-        infl, _, _ = await candidates(client, q["query"], pool, influential=25)
+        or_pool, _, strict_total = await candidates(client, q["query"], pool)
+        multi, _, _ = await candidates(client, q["query"], pool, strategy="multi")
+        infl, _, _ = await candidates(client, q["query"], pool, influential=pool // 2)
         out[q["id"]] = {
             "raw": raw,
-            "or": loose,
-            "pool": docs,
-            "pool_infl": infl,
+            "or_ranking": loose,
+            "or": or_pool,
+            "multi": multi,
+            "infl": infl,
             "strict_total": strict_total,
-            "raw_latency_s": raw_s,
         }
     return out
 
 
-# ---------- main ----------
+# ---------- evaluation ----------
+
+
+def order(docs: list[Paper], scores: list[float]) -> list[int]:
+    return [d.recid for d, _ in sorted(zip(docs, scores, strict=True), key=lambda x: -x[1])]
 
 
 def top_ids(scores: list[float], ids: list[int], k: int = 100) -> list[int]:
@@ -146,24 +181,29 @@ def offline(
     recids = {p.recid for p in corpus}
     subset = [q for q in queries if q["recid"] in recids]
     ids = [p.recid for p in corpus]
+    by_id = {p.recid: p for p in corpus}
     t0 = time.perf_counter()
     dense.scores("warm up the cache", corpus)
     build_s = time.perf_counter() - t0
     bm25 = BM25Reranker()
     ranks: dict[str, list[int | None]] = {"bm25": [], "dense": [], "hybrid": [], "dense>xenc": []}
-    by_id = {p.recid: p for p in corpus}
     for q in subset:
         b = top_ids(bm25.scores(q["query"], corpus), ids)
         d = top_ids(dense.scores(q["query"], corpus), ids)
         top = [by_id[i] for i in d[:50]]
-        x = [p.recid for p, _ in sorted(zip(top, xenc.scores(q["query"], top), strict=True), key=lambda t: -t[1])]
+        x = order(top, xenc.scores(q["query"], top))
         for name, r in (("bm25", b), ("dense", d), ("hybrid", rrf(b, d)), ("dense>xenc", x)):
             ranks[name].append(rank_of(r[:10], q["recid"]))
+    mrr = {k: per_query_scores(v)["MRR@10"] for k, v in ranks.items()}
+    pairs = [("dense", "bm25"), ("hybrid", "dense"), ("dense>xenc", "dense")]
     return {
         "n_queries": len(subset),
         "corpus_size": len(corpus),
         "index_build_s": round(build_s, 1),
         "summary": summarize(ranks, rng),
+        "paired_permutation_p_mrr": {
+            f"{x} vs {y}": round(paired_permutation_p(mrr[x], mrr[y], rng), 4) for x, y in pairs
+        },
         "ranks": {k: dict(zip([q["id"] for q in subset], v, strict=True)) for k, v in ranks.items()},
     }
 
@@ -171,90 +211,61 @@ def offline(
 def live(
     queries: list[dict], pools: dict[str, dict], dense: DenseReranker, xenc: CrossEncoderReranker, rng: random.Random
 ) -> dict:
-    bm25 = BM25Reranker()
-    names = (
-        "raw",
-        "or",
-        "or+bm25",
-        "or+dense",
-        "or+dense+rrf",
-        "or+xenc",
-        "or+xenc+rrf",
-        "infl+dense+rrf",
-        "infl+xenc",
-        "infl+xenc+rrf",
-    )
-    ranks: dict[str, list[int | None]] = {k: [] for k in names}
-    pool_recall = {"pool": [], "pool_infl": []}
-    latency = {"dense_cached_vectors": [], "cross_encoder": []}
-
-    def order(docs: list[Paper], scores: list[float]) -> list[int]:
-        return [d.recid for d, _ in sorted(zip(docs, scores, strict=True), key=lambda x: -x[1])]
-
+    ranks: dict[str, list[int | None]] = {k: [] for k in LIVE_SYSTEMS}
+    in_pool: dict[str, list[float]] = {k: [] for k in POOLS}
+    latency = {"dense": [], "cross_encoder": []}
     for q in queries:
-        p = pools[q["id"]]
-        g, text = q["recid"], q["query"]
-        docs, infl = p["pool"], p["pool_infl"]
-        t0 = time.perf_counter()
-        dense_order = order(docs, dense.scores(text, docs))
-        latency["dense_cached_vectors"].append(time.perf_counter() - t0)
-        t0 = time.perf_counter()
-        xenc_order = order(docs, xenc.scores(text, docs))
-        latency["cross_encoder"].append(time.perf_counter() - t0)
-        infl_dense = order(infl, dense.scores(text, infl))
-        infl_xenc = order(infl, xenc.scores(text, infl))
-        inspire_order, infl_order = [d.recid for d in docs], [d.recid for d in infl]
-        systems = {
-            "raw": [d.recid for d in p["raw"]],
-            "or": [d.recid for d in p["or"]],
-            "or+bm25": order(docs, bm25.scores(text, docs)),
-            "or+dense": dense_order,
-            "or+dense+rrf": rrf(dense_order, inspire_order),
-            "or+xenc": xenc_order,
-            "or+xenc+rrf": rrf(xenc_order, inspire_order),
-            "infl+dense+rrf": rrf(infl_dense, infl_order),
-            "infl+xenc": infl_xenc,
-            "infl+xenc+rrf": rrf(infl_xenc, infl_order),
-        }
-        for name in names:
+        p, g, text = pools[q["id"]], q["recid"], q["query"]
+        systems = {"raw": [d.recid for d in p["raw"]], "or": [d.recid for d in p["or_ranking"]]}
+        for name in POOLS:
+            docs = p[name]
+            inspire_order = [d.recid for d in docs]
+            t0 = time.perf_counter()
+            dense_order = order(docs, dense.scores(text, docs))
+            latency["dense"].append(time.perf_counter() - t0)
+            t0 = time.perf_counter()
+            xenc_order = order(docs, xenc.scores(text, docs))
+            latency["cross_encoder"].append(time.perf_counter() - t0)
+            systems[f"{name}+dense"] = dense_order
+            systems[f"{name}+dense+rrf"] = rrf(dense_order, inspire_order)
+            systems[f"{name}+xenc"] = xenc_order
+            in_pool[name].append(1.0 if g in set(inspire_order) else 0.0)
+        systems["multi"] = [d.recid for d in p["multi"]]
+        for name in LIVE_SYSTEMS:
             ranks[name].append(rank_of(systems[name][:10], g))
-        pool_recall["pool"].append(g in set(inspire_order))
-        pool_recall["pool_infl"].append(g in set(infl_order))
 
     mrr = {k: per_query_scores(v)["MRR@10"] for k, v in ranks.items()}
-    pairs = [
-        ("or+dense+rrf", "or"),
-        ("or+xenc", "or"),
-        ("or+xenc", "or+dense+rrf"),
-        ("or+xenc+rrf", "or+xenc"),
-        ("infl+xenc", "infl+dense+rrf"),
-        ("infl+xenc", "or+xenc"),
-        ("or", "raw"),
-    ]
     return {
         "n_queries": len(queries),
+        "title_overlap_share": round(statistics.fmean(title_overlap(q["query"], q["title"]) for q in queries), 3),
         "summary": summarize(ranks, rng),
-        "pool_recall": {k: round(statistics.fmean(v), 3) for k, v in pool_recall.items()},
+        "pool_recall": {k: round(statistics.fmean(v), 3) for k, v in in_pool.items()},
+        "pool_recall_p": {
+            "multi vs or": round(paired_permutation_p(in_pool["multi"], in_pool["or"], rng), 4),
+            "infl vs or": round(paired_permutation_p(in_pool["infl"], in_pool["or"], rng), 4),
+        },
         "raw_zero_hits": sum(pools[q["id"]]["strict_total"] == 0 for q in queries),
         "paired_permutation_p_mrr": {
-            f"{x} vs {y}": round(paired_permutation_p(mrr[x], mrr[y], rng), 4) for x, y in pairs
+            f"{x} vs {y}": round(paired_permutation_p(mrr[x], mrr[y], rng), 4) for x, y in LIVE_TESTS
         },
         "median_rerank_latency_s": {k: round(statistics.median(v), 3) for k, v in latency.items()},
         "ranks": {k: dict(zip([q["id"] for q in queries], v, strict=True)) for k, v in ranks.items()},
     }
 
 
-async def gather(refresh: bool, pool: int) -> tuple[list[Paper], list[dict], dict]:
+async def gather(refresh: bool, pool: int) -> tuple[list[Paper], dict[str, list[dict]], dict[str, dict]]:
     CACHE.mkdir(exist_ok=True)
-    queries = load_queries()
+    sets = {name: load_queries(name) for name in QUERY_SETS}
     corpus_path = CACHE / "corpus.json"
+    pools = {}
     async with InspireClient() as client:
         if refresh or not corpus_path.exists():
             corpus_path.write_text(json.dumps(await fetch_corpus(client)))
-        await resolve_gold(client, queries)
-        pools = await live_pools(client, queries, pool)
+        for name, queries in sets.items():
+            await resolve_gold(client, queries)
+            pools[name] = await live_pools(client, queries, pool)
     corpus = [Paper(**p) for p in json.loads(corpus_path.read_text())]
-    return corpus, queries, pools
+    return corpus, sets, pools
 
 
 def main() -> None:
@@ -264,17 +275,20 @@ def main() -> None:
     args = parser.parse_args()
     rng = random.Random(SEED)
 
-    corpus, queries, pools = asyncio.run(gather(args.refresh, args.pool))
+    corpus, sets, pools = asyncio.run(gather(args.refresh, args.pool))
     dense = DenseReranker(cache_path=CACHE)
     xenc = CrossEncoderReranker()
     report = {
         "date": date.today().isoformat(),
         "model": dense.model_name,
-        "pool": args.pool,
-        "offline": offline(corpus, queries, dense, xenc, rng),
         "cross_encoder": xenc.model_name,
-        "live": live(queries, pools, dense, xenc, rng),
-        "queries": [{k: q[k] for k in ("id", "query", "arxiv", "recid", "title", "citations")} for q in queries],
+        "pool": args.pool,
+        "offline": offline(corpus, sets["famous"], dense, xenc, rng),
+        "live": {name: live(queries, pools[name], dense, xenc, rng) for name, queries in sets.items()},
+        "queries": {
+            name: [{k: q[k] for k in ("id", "query", "arxiv", "recid", "title", "citations")} for q in queries]
+            for name, queries in sets.items()
+        },
     }
     RESULTS.mkdir(exist_ok=True)
     out = RESULTS / f"results-{report['date']}.json"
@@ -285,7 +299,7 @@ def main() -> None:
 
 def print_markdown(r: dict) -> None:
     def table(summary: dict) -> None:
-        print("| system | R@1 | R@5 | R@10 (95% CI) | MRR@10 (95% CI) |\n|---|---|---|---|---|")
+        print("| system | R@1 | R@5 | R@10 [95% CI] | MRR@10 [95% CI] |\n|---|---|---|---|---|")
         for name, m in summary.items():
             print(
                 f"| {name} | {m['R@1']:.2f} | {m['R@5']:.2f} | {m['R@10']:.2f} "
@@ -293,20 +307,18 @@ def print_markdown(r: dict) -> None:
                 f"[{m['MRR@10_ci95'][0]:.2f}, {m['MRR@10_ci95'][1]:.2f}] |"
             )
 
-    off, liv = r["offline"], r["live"]
+    off = r["offline"]
     print(f"## Offline: {off['corpus_size']} papers, {off['n_queries']} queries\n")
     table(off["summary"])
-    print(f"\n## Live INSPIRE: {liv['n_queries']} queries, pool {r['pool']}\n")
-    table(liv["summary"])
-    print(f"\nPool recall (upper bound for reranking): {liv['pool_recall']}")
-    print(f"Raw question with zero hits: {liv['raw_zero_hits']}/{liv['n_queries']}")
-    print(f"Paired permutation p-values on MRR@10: {liv['paired_permutation_p_mrr']}")
-    print(f"Median rerank latency per query (pool {r['pool']}): {liv['median_rerank_latency_s']}")
-    print("\n| id | " + " | ".join(liv["ranks"]) + " | gold |\n|---|" + "---|" * (len(liv["ranks"]) + 1))
-    titles = {q["id"]: q["title"] for q in r["queries"]}
-    for qid in titles:
-        cells = [str(liv["ranks"][k][qid] or "-") for k in liv["ranks"]]
-        print(f"| {qid} | " + " | ".join(cells) + f" | {re.sub(r'[$|]', '', titles[qid])[:55]} |")
+    print(f"\nPaired permutation p on MRR@10: {off['paired_permutation_p_mrr']}")
+    for name, liv in r["live"].items():
+        print(f"\n## Live INSPIRE, {name}: {liv['n_queries']} queries, pool {r['pool']}\n")
+        table(liv["summary"])
+        print(f"\nPool recall: {liv['pool_recall']}  p: {liv['pool_recall_p']}")
+        print(f"Raw question with zero hits: {liv['raw_zero_hits']}/{liv['n_queries']}")
+        print(f"Questions repeating 3+ title words: {liv['title_overlap_share']}")
+        print(f"Paired permutation p on MRR@10: {liv['paired_permutation_p_mrr']}")
+        print(f"Median rerank latency (s): {liv['median_rerank_latency_s']}")
 
 
 if __name__ == "__main__":

@@ -2,7 +2,16 @@ import httpx
 import respx
 
 from inspire_mcp.client import BASE_URL, InspireClient, Paper
-from inspire_mcp.semantic import BM25Reranker, candidates, content_terms, relaxed_query, rrf, semantic_search
+from inspire_mcp.semantic import (
+    BM25Reranker,
+    candidates,
+    content_terms,
+    interleave,
+    phrase_terms,
+    relaxed_query,
+    rrf,
+    semantic_search,
+)
 
 from .conftest import ATLAS_HIGGS, hits
 
@@ -52,6 +61,7 @@ def test_rrf_rewards_agreement():
 
 class FixedReranker:
     name = "fixed"
+    fuse_with_inspire = False
 
     def __init__(self, best: int) -> None:
         self.best = best
@@ -122,3 +132,50 @@ def test_dense_reranker_scores_and_caches_vectors(tmp_path, monkeypatch):
     assert FakeEmbedding.embedded - first == 1  # only the query is embedded again
     assert (tmp_path / "embeddings.sqlite").exists()
     assert reranker.name == "dense:bge-small-en-v1.5"
+
+
+def test_phrase_terms_pairs_adjacent_content_words_only():
+    assert phrase_terms("the hierarchy problem and new warped extra dimensions") == [
+        "hierarchy problem",
+        "warped extra",
+        "extra dimensions",
+    ]
+
+
+def test_interleave_round_robin_without_duplicates():
+    a, b, c = paper(1, "a"), paper(2, "b"), paper(3, "c")
+    assert [p.recid for p in interleave([a, b], [b, c], [c])] == [1, 2, 3]
+
+
+@respx.mock
+async def test_multi_strategy_queries_phrases_and_titles():
+    route = respx.get(f"{BASE_URL}/literature").mock(return_value=httpx.Response(200, json=hits(ATLAS_HIGGS)))
+    async with InspireClient(min_interval=0) as client:
+        await candidates(client, "warped extra dimension", pool=10, strategy="multi")
+    queries = [c.request.url.params["q"] for c in route.calls]
+    assert '"warped extra" or "extra dimension"' in queries
+    assert "t warped or t extra or t dimension" in queries
+
+
+@respx.mock
+async def test_fusion_follows_the_reranker_preference():
+    a, b = {**ATLAS_HIGGS, "control_number": 10}, {**ATLAS_HIGGS, "control_number": 20}
+    respx.get(f"{BASE_URL}/literature").mock(
+        side_effect=[httpx.Response(200, json=hits(total=0)), httpx.Response(200, json=hits(a, b))] * 2
+    )
+    async with InspireClient(min_interval=0, cache_ttl=0) as client:
+        plain = await semantic_search(client, "higgs", k=2, reranker=FixedReranker(20))
+        bm25 = await semantic_search(client, "higgs", k=2, reranker=BM25Reranker())
+    assert plain.fusion == "reranker only" and [p.recid for p in plain.papers] == [20, 10]
+    assert bm25.fusion == "rrf(reranker, inspire)"
+
+
+def test_default_reranker_falls_back_when_models_are_missing(monkeypatch):
+    import inspire_mcp.semantic as sem
+
+    def unavailable(*args, **kwargs):
+        raise RuntimeError("no model")
+
+    monkeypatch.setattr(sem, "CrossEncoderReranker", unavailable)
+    monkeypatch.setattr(sem, "DenseReranker", unavailable)
+    assert isinstance(sem.default_reranker(), BM25Reranker)

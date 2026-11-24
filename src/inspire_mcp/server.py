@@ -95,8 +95,8 @@ def build_server(client: InspireClient | None = None, reranker: Reranker | None 
     ) -> dict[str, Any]:
         """Find papers for a natural-language question, e.g. "the paper that proposed warped extra dimensions".
 
-        Retrieves up to `pool` candidates from INSPIRE with a relaxed query, reranks them by semantic
-        similarity to the question and fuses that order with INSPIRE's ranking.
+        Retrieves up to `pool` candidates from INSPIRE with a relaxed query and reranks them by how well
+        each title and abstract answers the question (cross-encoder when installed, else embeddings or BM25).
 
         Args:
             question: the question in plain English.
@@ -222,7 +222,7 @@ def main() -> None:
         "--reranker",
         choices=["auto", "bm25", "dense", "cross-encoder"],
         default=os.environ.get("INSPIRE_MCP_RERANKER", "auto"),
-        help="semantic_search reranker: auto = dense if the 'semantic' extra is installed, else bm25",
+        help="semantic_search reranker: auto = cross-encoder if the 'semantic' extra is installed, else bm25",
     )
     args = parser.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
