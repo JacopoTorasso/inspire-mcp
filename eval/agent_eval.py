@@ -35,6 +35,7 @@ from anthropic import AsyncAnthropic, BadRequestError, RateLimitError
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 sys.path.insert(0, str(Path(__file__).parent))
 from run_eval import (  # noqa: E402
+    HELDOUT_SETS,
     QUERY_SETS,
     bootstrap_ci,
     load_queries,
@@ -238,11 +239,20 @@ async def run_question(client: AsyncAnthropic, model: str, tools: Tools, arm: st
     }
 
 
-def single_call_baseline() -> dict[str, dict[str, list[int | None]]]:
+def stored_single_call() -> dict[str, dict[str, int | None]]:
     """Ranks of the plain semantic_search tool (one call, cross-encoder) from the latest run_eval.py result."""
     latest = sorted(RESULTS.glob("results-*.json"))[-1]
     live = json.loads(latest.read_text())["live"]
     return {name: live[name]["ranks"]["or+xenc"] for name in live}
+
+
+async def measure_single_call(tools: Tools, queries: list[dict[str, Any]]) -> dict[str, int | None]:
+    """The same baseline computed now, for sets run_eval.py does not cover (the held-out set)."""
+    ranks = {}
+    for q in queries:
+        result = await semantic_search(tools.inspire, q["query"], k=10, pool=50, reranker=tools.reranker)
+        ranks[q["id"]] = rank_of([p.recid for p in result.papers], q["recid"])
+    return ranks
 
 
 async def main() -> None:
@@ -250,11 +260,13 @@ async def main() -> None:
     parser.add_argument("--model", required=True, choices=sorted(PRICES))
     parser.add_argument("--limit", type=int, default=0, help="questions per set (0 = all); a pilot samples evenly")
     parser.add_argument("--concurrency", type=int, default=4)
+    parser.add_argument("--sets", choices=["dev", "heldout"], default="dev")
     args = parser.parse_args()
 
     client = AsyncAnthropic(api_key=load_key(), max_retries=3)
     reranker = await asyncio.to_thread(CrossEncoderReranker)
-    sets = {name: load_queries(name) for name in QUERY_SETS}
+    names = list(QUERY_SETS) if args.sets == "dev" else list(HELDOUT_SETS)
+    sets = {name: load_queries(name) for name in names}
     if args.limit:
         rng = random.Random(SEED)
         sets = {name: rng.sample(qs, min(args.limit, len(qs))) for name, qs in sets.items()}
@@ -286,9 +298,13 @@ async def main() -> None:
 
         jobs = [one(q, arm) for qs in sets.values() for q in qs for arm in ("A", "B")]
         done = await asyncio.gather(*jobs)
+        baseline = (
+            stored_single_call()
+            if args.sets == "dev"
+            else {name: await measure_single_call(tools, qs) for name, qs in sets.items()}
+        )
 
     runs = {(qid, arm): out for qid, arm, out in done}
-    baseline = single_call_baseline()
     rng = random.Random(SEED)
     report: dict[str, Any] = {
         "date": date.today().isoformat(),
@@ -347,7 +363,7 @@ async def main() -> None:
     total = sum(o["cost_usd"] for o in runs.values())
     report["total_cost_usd"] = round(total, 4)
     RESULTS.mkdir(exist_ok=True)
-    tag = f"-pilot{args.limit}" if args.limit else ""
+    tag = (f"-pilot{args.limit}" if args.limit else "") + ("-heldout" if args.sets == "heldout" else "")
     out = RESULTS / f"agent-{args.model}-{report['date']}{tag}.json"
     out.write_text(json.dumps(report, indent=2, ensure_ascii=False))
     for name, block in report["sets"].items():

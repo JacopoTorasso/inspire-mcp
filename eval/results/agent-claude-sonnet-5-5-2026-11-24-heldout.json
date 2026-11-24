@@ -1,0 +1,2073 @@
+{
+  "date": "2026-11-24",
+  "model": "claude-sonnet-5-5",
+  "effort": "medium",
+  "max_turns": 8,
+  "prices_usd_per_mtok": {
+    "input": 2.0,
+    "output": 10.0,
+    "cache_read": 0.1,
+    "cache_write": 2.5
+  },
+  "sets": {
+    "heldout": {
+      "n": 40,
+      "summary": {
+        "single_call": {
+          "R@1": 0.6,
+          "R@5": 0.725,
+          "R@10": 0.8,
+          "MRR@10": 0.661,
+          "MRR@10_ci95": [
+            0.521,
+            0.787
+          ]
+        },
+        "agent_A": {
+          "R@1": 0.625,
+          "R@5": 0.65,
+          "R@10": 0.65,
+          "MRR@10": 0.637,
+          "MRR@10_ci95": [
+            0.487,
+            0.787
+          ],
+          "mean_tool_calls": 5.12,
+          "mean_cost_usd": 0.01585,
+          "median_latency_s": 9.7,
+          "outcomes": {
+            "submitted": 32,
+            "turn_limit": 8
+          }
+        },
+        "agent_B": {
+          "R@1": 0.85,
+          "R@5": 0.9,
+          "R@10": 0.9,
+          "MRR@10": 0.875,
+          "MRR@10_ci95": [
+            0.775,
+            0.963
+          ],
+          "mean_tool_calls": 1.5,
+          "mean_cost_usd": 0.01109,
+          "median_latency_s": 7.1,
+          "outcomes": {
+            "submitted": 39,
+            "turn_limit": 1
+          }
+        }
+      },
+      "paired_permutation_p_mrr": {
+        "agent_B vs agent_A": 0.0229,
+        "agent_A vs single_call": 0.8266,
+        "agent_B vs single_call": 0.0027
+      },
+      "per_query": [
+        {
+          "id": "h01",
+          "gold": 1381925,
+          "A": {
+            "rank": null,
+            "outcome": "turn_limit",
+            "queries": [
+              {
+                "query": "t Lagrangian perturbation theory displacement field accuracy nonlinear matter density comparison N-body",
+                "size": 10,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "Lagrangian perturbation theory displacements nonlinear density",
+                "size": 10,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "t how accurate Lagrangian displacements nonlinear density field cross-correlation LPT N-body",
+                "size": 10,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "t Lagrangian perturbation theory and the nonlinear density field: how well do displacements",
+                "size": 10,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "t displacement and density field Lagrangian perturbation theory reconstruction shell crossing",
+                "size": 10,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "t Lagrangian perturbation theory and nonlinear matter density",
+                "size": 10,
+                "sort": "mostcited"
+              },
+              {
+                "query": "Lagrangian perturbation theory displacements reproduce nonlinear density N-body particles",
+                "size": 10,
+                "sort": "mostrecent"
+              },
+              {
+                "query": "Lagrangian displacements nonlinear density LPT accuracy",
+                "size": 10,
+                "sort": "mostrecent"
+              },
+              {
+                "query": "t Zel'dovich approximation 2LPT 3LPT density field comparison simulations cross-correlation coefficient",
+                "size": 10,
+                "sort": "bestmatch"
+              }
+            ],
+            "cost_usd": 0.0238
+          },
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "question": "how well do Lagrangian perturbation theory displacements reproduce the nonlinear matter density field in N-body simulations",
+                "prefer_influential": false
+              },
+              {
+                "query": "t Lagrangian perturbation theory and (t displacement or t \"how far\") and t density",
+                "size": 10,
+                "sort": "bestmatch"
+              },
+              {
+                "question": "How far can LPT displacement fields go: comparing perturbative displacements to N-body to reconstruct nonlinear density field, cross-correlation",
+                "prefer_influential": false
+              }
+            ],
+            "cost_usd": 0.01825
+          }
+        },
+        {
+          "id": "h02",
+          "gold": 2103020,
+          "A": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "query": "nucleon width inelastic cross section Pb-Pb Trento bulk viscosity",
+                "size": 10,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "t nucleon width and bulk viscosity heavy-ion",
+                "size": 10,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "t nucleon width Pb-Pb inelastic cross section Bayesian",
+                "size": 10,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "nucleon width hadronic cross section lead-lead bulk viscosity",
+                "size": 10,
+                "sort": "bestmatch"
+              }
+            ],
+            "cost_usd": 0.01074
+          },
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "question": "smaller nucleon width from measured Pb-Pb inelastic hadronic cross section, consequences for bulk viscosity",
+                "prefer_influential": false
+              }
+            ],
+            "cost_usd": 0.00991
+          }
+        },
+        {
+          "id": "h03",
+          "gold": 1852935,
+          "A": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "query": "t quantum Fisher information entangled non-Gaussian states superconducting processor metrological usefulness",
+                "size": 10,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "metrological usefulness entangled states superconducting processor non-Gaussian",
+                "size": 10,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "t metrological usefulness superconducting",
+                "size": 10,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "t quantum Fisher information multiqubit entanglement superconducting quantum processor",
+                "size": 10,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "Fisher information entanglement non-Gaussian superconducting qubits",
+                "size": 10,
+                "sort": "mostrecent"
+              }
+            ],
+            "cost_usd": 0.01263
+          },
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "question": "quantifying metrological usefulness of non-Gaussian entangled multiqubit states on a superconducting processor",
+                "prefer_influential": false
+              }
+            ],
+            "cost_usd": 0.00918
+          }
+        },
+        {
+          "id": "h04",
+          "gold": 1814309,
+          "A": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "query": "wobbling bands gold isotope Au two wobbling bands opposite energy trend spin",
+                "size": 10,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "t wobbling and Au",
+                "size": 15,
+                "sort": "mostrecent"
+              }
+            ],
+            "cost_usd": 0.00884
+          },
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "question": "two wobbling bands with opposite energy trends versus spin in gold isotope (Au) transverse wobbling",
+                "prefer_influential": false
+              }
+            ],
+            "cost_usd": 0.00964
+          }
+        },
+        {
+          "id": "h05",
+          "gold": 1835089,
+          "A": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "query": "bumblebee gravity Snyder perihelion",
+                "size": 10,
+                "sort": "bestmatch"
+              }
+            ],
+            "cost_usd": 0.00479
+          },
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "question": "perihelion shift and orbits in Lorentz violating bumblebee gravity metric with Snyder algebra",
+                "prefer_influential": false
+              }
+            ],
+            "cost_usd": 0.0095
+          }
+        },
+        {
+          "id": "h06",
+          "gold": 1407782,
+          "A": {
+            "rank": null,
+            "outcome": "turn_limit",
+            "queries": [
+              {
+                "query": "t hydrodynamical simulations rotation curves Local Group dwarf galaxies LCDM tension",
+                "size": 15,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "t Local Group dwarfs rotation LCDM simulations too big to fail",
+                "size": 15,
+                "sort": "mostcited"
+              },
+              {
+                "query": "t dwarf galaxies rotation velocities Local Group LCDM hydrodynamical",
+                "size": 15,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "t Local Group dwarf LCDM rotation speeds",
+                "size": 15,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "Local Group dwarfs rotation speeds LCDM hydrodynamical simulations tension",
+                "size": 15,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "dwarf galaxies Local Group too big to fail hydrodynamical",
+                "size": 15,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "APOSTLE simulations solutions to the Local Group's cosmic puzzles",
+                "size": 5,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "Brook Di Cintio galaxy formation velocity function Local Group dwarfs simulations",
+                "size": 5,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "Local Group dwarf rotation curves circular velocities simulations resolve tension LCDM",
+                "size": 10,
+                "sort": "bestmatch"
+              }
+            ],
+            "cost_usd": 0.02437
+          },
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "question": "hydrodynamical simulations resolving tension between LCDM and rotation curves of Local Group dwarf galaxies",
+                "prefer_influential": false
+              }
+            ],
+            "cost_usd": 0.01012
+          }
+        },
+        {
+          "id": "h07",
+          "gold": 1512755,
+          "A": {
+            "rank": null,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "query": "t inflation running quartic coupling flat minimum U(1) extension",
+                "size": 10,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "abstract slow-roll inflation running quartic coupling almost flat minimum U(1) Coleman-Weinberg",
+                "size": 10,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "inflation running quartic coupling U(1) extension standard model",
+                "size": 10,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "t inflation and quartic coupling nearly vanishing minimum B-L Higgs inflaton running",
+                "size": 10,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "Higgs inflation quartic coupling renormalization group almost flat minimum U(1)",
+                "size": 10,
+                "sort": "bestmatch"
+              }
+            ],
+            "cost_usd": 0.01771
+          },
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "question": "slow-roll inflation from running quartic coupling with almost flat minimum in U(1) extension of the Standard Model",
+                "prefer_influential": false
+              },
+              {
+                "query": "a Okada and t inflection-point inflation U(1) quartic coupling running",
+                "size": 10,
+                "sort": "mostcited"
+              },
+              {
+                "query": "t inflection-point inflation and (B-L or U(1))",
+                "size": 10,
+                "sort": "mostcited"
+              },
+              {
+                "query": "t inflection-point inflation and a Okada",
+                "size": 10,
+                "sort": "mostcited"
+              }
+            ],
+            "cost_usd": 0.01762
+          }
+        },
+        {
+          "id": "h08",
+          "gold": 1396169,
+          "A": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "query": "t probability distribution effective Majorana mass neutrinoless double beta decay",
+                "size": 15,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "effective mass neutrinoless double beta decay distribution random mixing angles Majorana phases anarchy",
+                "size": 15,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "t probability distribution effective mass neutrinoless double beta decay",
+                "size": 15,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "t Bayesian effective Majorana mass double beta decay phases prior",
+                "size": 15,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "t distribution effective mass neutrinoless double beta decay",
+                "size": 15,
+                "sort": "mostcited"
+              },
+              {
+                "query": "probability distribution effective Majorana mass double beta decay",
+                "size": 15,
+                "sort": "bestmatch"
+              }
+            ],
+            "cost_usd": 0.01983
+          },
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "question": "probability distribution of the neutrinoless double beta decay effective Majorana mass from random sampling of mixing angles and Majorana phases",
+                "prefer_influential": false
+              }
+            ],
+            "cost_usd": 0.00956
+          }
+        },
+        {
+          "id": "h09",
+          "gold": 1850948,
+          "A": {
+            "rank": null,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "query": "t confinement phase transition warped extra dimension large N",
+                "size": 15,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "t first order phase transition Randall-Sundrum confinement",
+                "size": 15,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "t confinement transition and warped",
+                "size": 15,
+                "sort": "mostcited"
+              },
+              {
+                "query": "t cosmological phase transition Randall-Sundrum",
+                "size": 15,
+                "sort": "mostcited"
+              },
+              {
+                "query": "t completing confinement phase transition holographic",
+                "size": 15,
+                "sort": "mostcited"
+              },
+              {
+                "query": "confinement phase transition warped extra dimension large N bubble nucleation",
+                "size": 15,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "Randall-Sundrum phase transition",
+                "size": 15,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "Agashe cosmological phase transition spontaneously confining gauge theories",
+                "size": 5,
+                "sort": "bestmatch"
+              }
+            ],
+            "cost_usd": 0.02399
+          },
+          "B": {
+            "rank": null,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "question": "first order confinement phase transition in warped extra dimension (Randall-Sundrum) fails to complete at large N",
+                "prefer_influential": false
+              }
+            ],
+            "cost_usd": 0.01095
+          }
+        },
+        {
+          "id": "h10",
+          "gold": 1509925,
+          "A": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "query": "Regge cut 2 to 2 amplitude three loops Balitsky-JIMWLK",
+                "size": 10,
+                "sort": "bestmatch"
+              }
+            ],
+            "cost_usd": 0.00501
+          },
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "question": "Regge cut in 2→2 gauge theory amplitudes at three loops from Balitsky-JIMWLK evolution",
+                "prefer_influential": false
+              }
+            ],
+            "cost_usd": 0.00948
+          }
+        },
+        {
+          "id": "h11",
+          "gold": 1672377,
+          "A": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "query": "t Loday algebras gauge theory three dimensional exceptional generalized geometry",
+                "size": 10,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "Loday algebra Chern-Simons gauge theory generalized geometry",
+                "size": 10,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "Loday algebras three dimensions gauge",
+                "size": 10,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "Loday algebra gauge theory",
+                "size": 10,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "Chern-Simons Leibniz algebra three-dimensional exceptional generalized",
+                "size": 10,
+                "sort": "bestmatch"
+              }
+            ],
+            "cost_usd": 0.01337
+          },
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "question": "three dimensional gauge theory based on Loday algebras and exceptional generalized geometry",
+                "prefer_influential": false
+              }
+            ],
+            "cost_usd": 0.00936
+          }
+        },
+        {
+          "id": "h12",
+          "gold": 1402393,
+          "A": {
+            "rank": null,
+            "outcome": "turn_limit",
+            "queries": [
+              {
+                "query": "t neutrinoless double beta decay distinguish mechanisms nuclear matrix elements beyond Standard Model",
+                "size": 15,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "t distinguishing mechanisms neutrinoless double beta decay",
+                "size": 15,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "t neutrinoless double beta decay and mechanisms and nuclear matrix elements",
+                "size": 15,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "neutrinoless double beta decay discriminate new physics mechanisms using ratios of half-lives different isotopes",
+                "size": 15,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "t double beta decay and distinguish and mechanisms",
+                "size": 15,
+                "sort": "mostcited"
+              },
+              {
+                "query": "t neutrinoless double beta decay and distinguishing",
+                "size": 15,
+                "sort": "mostcited"
+              },
+              {
+                "query": "t neutrinoless double beta decay and underlying mechanism and matrix elements",
+                "size": 15,
+                "sort": "mostcited"
+              },
+              {
+                "query": "t distinguishing and neutrinoless and beta",
+                "size": 15,
+                "sort": "mostcited"
+              },
+              {
+                "query": "t 0vbb mechanisms nuclear matrix elements",
+                "size": 15,
+                "sort": "mostcited"
+              },
+              {
+                "query": "t neutrinoless double beta decay and t mechanisms",
+                "size": 20,
+                "sort": "mostcited"
+              }
+            ],
+            "cost_usd": 0.02006
+          },
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "question": "distinguishing beyond Standard Model mechanisms of neutrinoless double beta decay using nuclear matrix element calculations",
+                "prefer_influential": false
+              }
+            ],
+            "cost_usd": 0.00973
+          }
+        },
+        {
+          "id": "h13",
+          "gold": 1998358,
+          "A": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "query": "t integrability breaking perturbation delocalization Fock space quantum chaos",
+                "size": 10,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "integrability breaking delocalization Fock space chaos",
+                "size": 10,
+                "sort": "bestmatch"
+              }
+            ],
+            "cost_usd": 0.00641
+          },
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "question": "integrability breaking perturbations and delocalization in Fock space as onset of quantum chaos",
+                "prefer_influential": false
+              }
+            ],
+            "cost_usd": 0.00916
+          }
+        },
+        {
+          "id": "h14",
+          "gold": 1978959,
+          "A": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "query": "t complex metric Feynman propagator prescription iε deformation spacetime",
+                "size": 10,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "t Feynman prescription complex deformation of the metric",
+                "size": 10,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "complex metric Feynman propagator prescription",
+                "size": 10,
+                "sort": "bestmatch"
+              }
+            ],
+            "cost_usd": 0.00887
+          },
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "question": "complex deformations of the spacetime metric as a reinterpretation of Feynman's iε propagator prescription",
+                "prefer_influential": false
+              }
+            ],
+            "cost_usd": 0.00948
+          }
+        },
+        {
+          "id": "h15",
+          "gold": 1867524,
+          "A": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "query": "t brane interactions non-supersymmetric tachyon-free orientifold heterotic swampland",
+                "size": 10,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "t brane interactions non-supersymmetric strings swampland",
+                "size": 10,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "brane interactions non-supersymmetric orientifold heterotic",
+                "size": 10,
+                "sort": "bestmatch"
+              }
+            ],
+            "cost_usd": 0.00904
+          },
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "question": "brane interactions in tachyon-free non-supersymmetric orientifold and heterotic string models and swampland",
+                "prefer_influential": false
+              }
+            ],
+            "cost_usd": 0.00937
+          }
+        },
+        {
+          "id": "h16",
+          "gold": 1842026,
+          "A": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "query": "t effective action Hagedorn temperature winding mode interacting strings",
+                "size": 15,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "t Hagedorn winding effective action",
+                "size": 15,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "t low energy effective action strings near Hagedorn temperature",
+                "size": 15,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "Hagedorn temperature winding mode effective action scattering amplitudes",
+                "size": 15,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "Hagedorn winding effective action",
+                "size": 15,
+                "sort": "mostrecent"
+              }
+            ],
+            "cost_usd": 0.01497
+          },
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "question": "low energy effective action for interacting strings near Hagedorn temperature from winding mode amplitudes",
+                "prefer_influential": false
+              }
+            ],
+            "cost_usd": 0.00914
+          }
+        },
+        {
+          "id": "h17",
+          "gold": 1747261,
+          "A": {
+            "rank": null,
+            "outcome": "turn_limit",
+            "queries": [
+              {
+                "query": "t tensionless string symmetric orbifold T4 correlators three-point",
+                "size": 10,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "t correlators tensionless string AdS3 symmetric orbifold T^4 hybrid formalism",
+                "size": 10,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "t tensionless string symmetric orbifold correlators",
+                "size": 15,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "tensionless string symmetric orbifold three-point functions",
+                "size": 15,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "tensionless string AdS3 symmetric product orbifold correlators",
+                "size": 15,
+                "sort": "mostrecent"
+              },
+              {
+                "query": "a Eberhardt tensionless string correlators",
+                "size": 15,
+                "sort": "mostrecent"
+              },
+              {
+                "query": "Eberhardt AdS3 tensionless",
+                "size": 15,
+                "sort": "mostrecent"
+              },
+              {
+                "query": "tensionless string T4 symmetric orbifold",
+                "size": 15,
+                "sort": "mostrecent"
+              },
+              {
+                "query": "Dei Eberhardt correlators AdS3 string",
+                "size": 15,
+                "sort": "mostrecent"
+              },
+              {
+                "query": "string correlators AdS3 x S3 x T4 symmetric orbifold",
+                "size": 15,
+                "sort": "mostcited"
+              },
+              {
+                "query": "tensionless string correlators",
+                "size": 15,
+                "sort": "mostrecent"
+              },
+              {
+                "query": "t \"three-point\" and t AdS3 and t tensionless",
+                "size": 15,
+                "sort": "mostrecent"
+              },
+              {
+                "query": "Dei Eberhardt \"Correlators of the symmetric product orbifold\"",
+                "size": 5,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "t string theory on AdS3 x S3 x T4 three-point functions tensionless limit worldsheet",
+                "size": 10,
+                "sort": "mostcited"
+              }
+            ],
+            "cost_usd": 0.03663
+          },
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "question": "three-point correlation functions in the tensionless string on AdS3×S3×T4 dual to symmetric orbifold of T4",
+                "prefer_influential": false
+              },
+              {
+                "query": "t tensionless and t correlators and t symmetric orbifold",
+                "size": 10,
+                "sort": "mostrecent"
+              },
+              {
+                "query": "a Eberhardt and t correlators symmetric product orbifold",
+                "size": 5,
+                "sort": "mostcited"
+              }
+            ],
+            "cost_usd": 0.01519
+          }
+        },
+        {
+          "id": "h18",
+          "gold": 1589424,
+          "A": {
+            "rank": null,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "query": "t Limber approximation flat-sky cosmic shear power spectrum low multipoles accuracy",
+                "size": 10,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "cosmic shear small angle approximation Limber bias power spectrum large scales",
+                "size": 10,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "t Limber and t shear and t power spectra",
+                "size": 10,
+                "sort": "mostcited"
+              },
+              {
+                "query": "t cosmic shear and (t Limber or t flat-sky or t extended)",
+                "size": 10,
+                "sort": "mostcited"
+              },
+              {
+                "query": "Limber approximation weak lensing angular power spectrum spherical sky exact",
+                "size": 10,
+                "sort": "mostcited"
+              }
+            ],
+            "cost_usd": 0.01354
+          },
+          "B": {
+            "rank": 2,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "question": "accuracy of Limber and small angle (flat-sky) approximations for cosmic shear power spectra at low multipoles",
+                "prefer_influential": false
+              }
+            ],
+            "cost_usd": 0.01008
+          }
+        },
+        {
+          "id": "h19",
+          "gold": 2153896,
+          "A": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "query": "t weak deflection angle wormhole antisymmetric tensor field Gauss-Bonnet plasma dark matter",
+                "size": 10,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "t wormhole Kalb-Ramond gravitational lensing Gauss-Bonnet plasma",
+                "size": 10,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "t wormhole antisymmetric tensor field light deflection",
+                "size": 10,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "t Kalb-Ramond wormhole weak deflection angle",
+                "size": 10,
+                "sort": "bestmatch"
+              }
+            ],
+            "cost_usd": 0.01003
+          },
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "question": "Gauss-Bonnet theorem light deflection wormhole antisymmetric tensor field (Kalb-Ramond) plasma dark matter",
+                "prefer_influential": false
+              }
+            ],
+            "cost_usd": 0.01009
+          }
+        },
+        {
+          "id": "h20",
+          "gold": 1692397,
+          "A": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "query": "t thermonuclear X-ray burst spectra deviation blackbody accretion enhanced persistent emission",
+                "size": 10,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "t burst cooling tails neutron star accretion heating spectra deviation",
+                "size": 10,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "t thermonuclear burst cooling accretion",
+                "size": 10,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "t X-ray burst spectra accretion disk interaction",
+                "size": 10,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "thermonuclear bursts spectra cooling accretion heating",
+                "size": 10,
+                "sort": "bestmatch"
+              }
+            ],
+            "cost_usd": 0.0114
+          },
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "question": "deviation of thermonuclear X-ray burst spectra from blackbody cooling explained by accretion heating (Poynting-Robertson drag, accretion disk reprocessing)",
+                "prefer_influential": false
+              }
+            ],
+            "cost_usd": 0.01035
+          }
+        },
+        {
+          "id": "h21",
+          "gold": 1847189,
+          "A": {
+            "rank": null,
+            "outcome": "turn_limit",
+            "queries": [
+              {
+                "query": "t hyperons Delta baryons antikaon condensation compact stars density functional",
+                "size": 10,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "t compact stars hyperons Delta antikaon",
+                "size": 10,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "t antikaon condensation and Delta hyperons neutron stars",
+                "size": 10,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "t antikaon and t Delta and t hyperons",
+                "size": 10,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "t antikaon and t Delta and t stars",
+                "size": 10,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "t hyperons and t Delta and t compact stars",
+                "size": 10,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "a Sedrakian and antikaon and Delta",
+                "size": 10,
+                "sort": "mostrecent"
+              },
+              {
+                "query": "a Sedrakian, A and a Li, Jia Jie",
+                "size": 15,
+                "sort": "mostrecent"
+              },
+              {
+                "query": "t antikaon condensation and (hyperons or delta) and t stars",
+                "size": 10,
+                "sort": "mostrecent"
+              }
+            ],
+            "cost_usd": 0.02342
+          },
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "question": "compact stars with hyperons and Delta baryons including antikaon condensation in covariant density functional theory",
+                "prefer_influential": false
+              }
+            ],
+            "cost_usd": 0.00926
+          }
+        },
+        {
+          "id": "h22",
+          "gold": 1621249,
+          "A": {
+            "rank": null,
+            "outcome": "turn_limit",
+            "queries": [
+              {
+                "query": "t wormhole and (energy-momentum squared gravity or f(R,T) or T^2)",
+                "size": 15,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "t wormhole f(R,T) quadratic trace stress-energy exotic matter",
+                "size": 15,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "wormhole f(R,T) = R + T^2 non-exotic matter",
+                "size": 10,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "t wormhole and t quadratic and t trace",
+                "size": 10,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "t wormhole and t \"T^2\" gravity",
+                "size": 10,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "t wormhole and t f(R,T) and t nonlinear",
+                "size": 10,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "wormhole without exotic matter quadratic trace energy-momentum tensor modified gravity",
+                "size": 10,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "t wormhole and t f(R,T)",
+                "size": 25,
+                "sort": "mostcited"
+              },
+              {
+                "query": "wormholes f(T) gravity trace stress-energy T^2 satisfy energy conditions Morris-Thorne",
+                "size": 10,
+                "sort": "bestmatch"
+              }
+            ],
+            "cost_usd": 0.03056
+          },
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "question": "wormholes without exotic matter in modified gravity with quadratic dependence on trace of stress-energy tensor T^2",
+                "prefer_influential": false
+              }
+            ],
+            "cost_usd": 0.00954
+          }
+        },
+        {
+          "id": "h23",
+          "gold": 1948939,
+          "A": {
+            "rank": null,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "query": "t gapless spin liquid deconfined critical point frustrated magnet",
+                "size": 10,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "t spin liquid deconfined critical point between ordered phases",
+                "size": 10,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "t gapless spin liquid and deconfined criticality",
+                "size": 10,
+                "sort": "bestmatch"
+              }
+            ],
+            "cost_usd": 0.00802
+          },
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "question": "gapless spin liquid arising at a deconfined critical point between ordered phases in frustrated magnets",
+                "prefer_influential": false
+              }
+            ],
+            "cost_usd": 0.00963
+          }
+        },
+        {
+          "id": "h24",
+          "gold": 1898066,
+          "A": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "query": "t logarithmic correction entropy black holes rainbow massive gravity three dimensional",
+                "size": 10,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "t rainbow massive gravity black holes nonlinear electrodynamics",
+                "size": 10,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "rainbow massive gravity black hole entropy correction",
+                "size": 10,
+                "sort": "bestmatch"
+              }
+            ],
+            "cost_usd": 0.00817
+          },
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "question": "logarithmic entropy corrections for three dimensional black holes with nonlinear electrodynamics in rainbow massive gravity",
+                "prefer_influential": false
+              }
+            ],
+            "cost_usd": 0.00982
+          }
+        },
+        {
+          "id": "h25",
+          "gold": 1813665,
+          "A": {
+            "rank": null,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "query": "Sgr A* spin constraint S-stars disk orbital precession",
+                "size": 10,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "t spin of the Galactic Center black hole and S-stars disk",
+                "size": 10,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "t S-stars and spin of Sgr A* Lense-Thirring disk",
+                "size": 10,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "t black hole spin and S-stars",
+                "size": 10,
+                "sort": "mostrecent"
+              },
+              {
+                "query": "S-stars disk Galactic Center black hole spin constraint",
+                "size": 10,
+                "sort": "mostrecent"
+              },
+              {
+                "query": "Lense-Thirring precession clockwise disk stars Galactic Center spin upper limit",
+                "size": 10,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "t Constraining the spin of the massive black hole at the Galactic center S-stars",
+                "size": 10,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "S-stars angular momentum distribution disk Sgr A* spin Bardeen-Petterson",
+                "size": 10,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "Sgr A* spin S-stars orbital planes",
+                "size": 10,
+                "sort": "mostrecent"
+              },
+              {
+                "query": "S-stars disk-like structure maximum spin Sgr A* Lense-Thirring would destroy",
+                "size": 10,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "spin Sgr A* S-stars disk",
+                "size": 10,
+                "sort": "bestmatch"
+              }
+            ],
+            "cost_usd": 0.03411
+          },
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "question": "constraining spin of Sgr A* black hole from S-stars disk structure orbital plane precession",
+                "prefer_influential": false
+              }
+            ],
+            "cost_usd": 0.00956
+          }
+        },
+        {
+          "id": "h26",
+          "gold": 1802915,
+          "A": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "query": "fast radio burst X-ray burst SGR 1935+2154 emission mechanism quasi-periodic oscillations",
+                "size": 15,
+                "sort": "bestmatch"
+              }
+            ],
+            "cost_usd": 0.00517
+          },
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "question": "emission mechanisms for fast radio burst and simultaneous X-ray burst from Galactic magnetar SGR 1935+2154, quasi-periodic oscillations",
+                "prefer_influential": false
+              }
+            ],
+            "cost_usd": 0.00993
+          }
+        },
+        {
+          "id": "h27",
+          "gold": 1876660,
+          "A": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "query": "leptogenesis CP violation only from low energy PMNS phases flavour regimes seesaw type I",
+                "size": 15,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "t leptogenesis and \"low energy\" CP violation Dirac Majorana phases sufficient flavour transitions",
+                "size": 15,
+                "sort": "bestmatch"
+              }
+            ],
+            "cost_usd": 0.00743
+          },
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "question": "leptogenesis in type I seesaw with CP violation only from low energy PMNS phases (Dirac and Majorana), flavour regimes transitions",
+                "prefer_influential": false
+              }
+            ],
+            "cost_usd": 0.00999
+          }
+        },
+        {
+          "id": "h28",
+          "gold": 1422020,
+          "A": {
+            "rank": null,
+            "outcome": "turn_limit",
+            "queries": [
+              {
+                "query": "t redshift weighting galaxies growth of structure tomography without redshift bins",
+                "size": 10,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "t \"redshift weights\" growth rate angular power spectrum clustering redshift-weighted",
+                "size": 10,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "t growth of structure weighting galaxies redshift without tomographic bins",
+                "size": 10,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "t redshift-weighted angular clustering growth rate",
+                "size": 10,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "t weighting galaxies by redshift growth of structure",
+                "size": 10,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "t redshift weighting growth",
+                "size": 10,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "redshift weighting growth of structure galaxy clustering",
+                "size": 10,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "optimal redshift weights galaxy clustering growth rate avoid redshift bins compression",
+                "size": 10,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "redshift weights growth rate galaxy clustering",
+                "size": 10,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "weighting galaxies as function of redshift instead of tomographic slicing, growth of structure constraints",
+                "size": 10,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "redshift-weighted galaxy density field growth index single measurement",
+                "size": 10,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "galaxy clustering \"redshift weighting\" growth",
+                "size": 10,
+                "sort": "mostrecent"
+              },
+              {
+                "query": "clustering-based weights photometric galaxies growth of structure sigma8(z) without binning",
+                "size": 10,
+                "sort": "bestmatch"
+              }
+            ],
+            "cost_usd": 0.03713
+          },
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "question": "weighting galaxies by redshift to measure growth of structure without splitting into redshift bins/shells",
+                "prefer_influential": false
+              }
+            ],
+            "cost_usd": 0.00952
+          }
+        },
+        {
+          "id": "h29",
+          "gold": 1781770,
+          "A": {
+            "rank": null,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "query": "glitch classification to vet compact binary gravitational wave candidates detector noise transients",
+                "size": 10,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "t glitch and (Gravity Spy or classification) and t gravitational wave candidates",
+                "size": 10,
+                "sort": "mostcited"
+              }
+            ],
+            "cost_usd": 0.0066
+          },
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "question": "using classified detector noise transients (glitches) to check that compact binary gravitational wave signals are astrophysical",
+                "prefer_influential": false
+              }
+            ],
+            "cost_usd": 0.00931
+          }
+        },
+        {
+          "id": "h30",
+          "gold": 1840581,
+          "A": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "query": "giant flare extragalactic magnetar Fermi GBM spectral evolution",
+                "size": 10,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "GRB 200415A magnetar giant flare Sculptor",
+                "size": 10,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "t rapid spectral variability giant flare magnetar NGC 253",
+                "size": 5,
+                "sort": "bestmatch"
+              }
+            ],
+            "cost_usd": 0.0153
+          },
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "question": "fast spectral changes during extragalactic magnetar giant flare observed by Fermi GBM",
+                "prefer_influential": false
+              }
+            ],
+            "cost_usd": 0.00972
+          }
+        },
+        {
+          "id": "h31",
+          "gold": 1720855,
+          "A": {
+            "rank": 2,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "query": "t gamma-ray emission broad line region clouds jet interaction",
+                "size": 15,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "broad line region clouds relativistic jet gamma-ray",
+                "size": 15,
+                "sort": "bestmatch"
+              }
+            ],
+            "cost_usd": 0.013
+          },
+          "B": {
+            "rank": 2,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "question": "gamma-ray emission from broad line region clouds penetrating relativistic jets of active galaxies",
+                "prefer_influential": false
+              },
+              {
+                "query": "a Araudo and t cloud and t jets",
+                "size": 8,
+                "sort": "mostcited"
+              }
+            ],
+            "cost_usd": 0.01276
+          }
+        },
+        {
+          "id": "h32",
+          "gold": 1814398,
+          "A": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "query": "afterglow structured Gaussian jet bright long GRB modelling",
+                "size": 15,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "GRB 221009A afterglow structured jet Gaussian angular profile modelling",
+                "size": 10,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "t Gaussian structured jet afterglow GRB 130427A or GRB 190114C or GRB 160625B",
+                "size": 10,
+                "sort": "bestmatch"
+              }
+            ],
+            "cost_usd": 0.02047
+          },
+          "B": {
+            "rank": null,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "question": "afterglow modelling of a bright long gamma-ray burst with a structured jet with Gaussian angular profile",
+                "prefer_influential": false
+              }
+            ],
+            "cost_usd": 0.01007
+          }
+        },
+        {
+          "id": "h33",
+          "gold": 1829462,
+          "A": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "query": "t four derivative gauged supergravity M5-branes hyperbolic three-manifolds 3d-3d correspondence",
+                "size": 10,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "four-derivative supergravity M5-branes hyperbolic 3-manifolds 3d-3d",
+                "size": 10,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "t four-derivative gauged supergravity and 3d-3d correspondence",
+                "size": 10,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "higher derivative 4d minimal gauged supergravity M5-branes hyperbolic three-manifold Chern-Simons invariants",
+                "size": 10,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "t four-derivative supergravity and t 3d-3d",
+                "size": 10,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "t M5-branes and t hyperbolic and t supergravity and date > 2020",
+                "size": 10,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "four-derivative gauged supergravity 3d-3d correspondence",
+                "size": 10,
+                "sort": "mostrecent"
+              }
+            ],
+            "cost_usd": 0.01738
+          },
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "question": "four derivative gauged supergravity, M5-branes wrapped on hyperbolic three-manifolds, 3d-3d correspondence",
+                "prefer_influential": false
+              }
+            ],
+            "cost_usd": 0.0097
+          }
+        },
+        {
+          "id": "h34",
+          "gold": 1394693,
+          "A": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "query": "t DFSZ axion right-handed neutrinos leptogenesis dark matter strong CP minimal extension",
+                "size": 10,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "t axion neutrino mass leptogenesis strong CP dark matter inflation SMASH OR \"DFSZ\" right-handed neutrinos",
+                "size": 10,
+                "sort": "mostcited"
+              }
+            ],
+            "cost_usd": 0.01151
+          },
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "question": "minimal extension of the Standard Model with right-handed neutrinos and DFSZ axion explaining neutrino mass, leptogenesis, strong CP problem and dark matter",
+                "prefer_influential": false
+              }
+            ],
+            "cost_usd": 0.00985
+          }
+        },
+        {
+          "id": "h35",
+          "gold": 1716223,
+          "A": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "query": "t PDS 456 and (wind or outflow) and (grating or RGS or HETG)",
+                "size": 15,
+                "sort": "mostcited"
+              },
+              {
+                "query": "t PDS 456",
+                "size": 25,
+                "sort": "mostcited"
+              }
+            ],
+            "cost_usd": 0.01839
+          },
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "question": "highly ionized iron absorption at relativistic speeds in the wind of PDS 456 with X-ray gratings (XMM RGS/Chandra HETG)",
+                "prefer_influential": false
+              },
+              {
+                "query": "t PDS 456 and (t wind or t outflow) and (t grating or t RGS or t HETG)",
+                "size": 10,
+                "sort": "bestmatch"
+              }
+            ],
+            "cost_usd": 0.012
+          }
+        },
+        {
+          "id": "h36",
+          "gold": 1384132,
+          "A": {
+            "rank": null,
+            "outcome": "turn_limit",
+            "queries": [
+              {
+                "query": "t holographic correlators energy-momentum tensor three dimensional gravity flat space limit n-point",
+                "size": 10,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "holographic correlators stress tensor 3d gravity flat space",
+                "size": 10,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "t n-point functions energy-momentum tensor three-dimensional gravity",
+                "size": 10,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "t holographic energy momentum tensor correlators flat space",
+                "size": 10,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "holographic n-point functions energy momentum tensor Einstein gravity three dimensions",
+                "size": 10,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "t stress tensor correlators flat holography BMS",
+                "size": 10,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "stress tensor correlators from 3d gravity Chern-Simons Bondi flat holography n-point",
+                "size": 10,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "Virasoro BMS3 correlators holographic Einstein gravity on-shell action Alekseev-Shatashvili",
+                "size": 10,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "holographic correlators stress tensor flat space three dimensions",
+                "size": 10,
+                "sort": "mostrecent"
+              },
+              {
+                "query": "Einstein gravity 3d asymptotically flat holographic correlation functions energy-momentum tensor all n",
+                "size": 10,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "a Grumiller and t correlators flat space holography",
+                "size": 10,
+                "sort": "mostrecent"
+              }
+            ],
+            "cost_usd": 0.0229
+          },
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "question": "holographic n-point functions of the boundary energy momentum tensor in 3d Einstein gravity, including flat space",
+                "prefer_influential": false
+              },
+              {
+                "query": "t n-point functions energy-momentum tensor three-dimensional gravity holography flat",
+                "size": 10,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "t holographic and stress tensor correlators and 3d gravity and flat",
+                "size": 10,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "t correlators stress tensor 3d gravity Bondi flat holography n-point",
+                "size": 10,
+                "sort": "bestmatch"
+              },
+              {
+                "question": "all n-point correlators of stress tensor from three-dimensional Einstein gravity, AdS3 and flat limit, Chern-Simons / Bondi gauge",
+                "prefer_influential": false
+              }
+            ],
+            "cost_usd": 0.02119
+          }
+        },
+        {
+          "id": "h37",
+          "gold": 1376484,
+          "A": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "query": "cn BESIII and t Dalitz plot eta' eta three pions",
+                "size": 15,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "cn BESIII and t eta' decays Dalitz plot",
+                "size": 15,
+                "sort": "mostcited"
+              },
+              {
+                "query": "t Dalitz plot analysis eta' decays BESIII",
+                "size": 15,
+                "sort": "mostcited"
+              },
+              {
+                "query": "t Dalitz plot eta three pions",
+                "size": 15,
+                "sort": "mostcited"
+              },
+              {
+                "query": "Dalitz plot eta' BESIII",
+                "size": 15,
+                "sort": "mostcited"
+              }
+            ],
+            "cost_usd": 0.01883
+          },
+          "B": {
+            "rank": null,
+            "outcome": "turn_limit",
+            "queries": [
+              {
+                "query": "cn BESIII and t Dalitz plot eta' eta pi pi",
+                "size": 10,
+                "sort": "mostcited"
+              },
+              {
+                "query": "cn BESIII and t Dalitz plot analysis eta",
+                "size": 10,
+                "sort": "mostcited"
+              },
+              {
+                "question": "BESIII Dalitz plot analysis of eta' → eta pi pi and eta → 3 pi decays",
+                "prefer_influential": false
+              },
+              {
+                "query": "t Dalitz plot analysis eta eta' three pions BESIII",
+                "size": 10,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "t Dalitz plot analysis and t three pions and t eta",
+                "size": 10,
+                "sort": "mostrecent"
+              },
+              {
+                "query": "t Dalitz plot and t eta and t three and date > 2014",
+                "size": 10,
+                "sort": "bestmatch"
+              },
+              {
+                "question": "Dalitz plot analysis of eta and eta' decays into three pions, BESIII",
+                "prefer_influential": false
+              },
+              {
+                "query": "cn BESIII and t eta' and (t pi0 pi0 pi0 or t pi+ pi- pi0)",
+                "size": 10,
+                "sort": "mostcited"
+              }
+            ],
+            "cost_usd": 0.02703
+          }
+        },
+        {
+          "id": "h38",
+          "gold": 1836659,
+          "A": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "query": "t free fermion solution spin models frustration graph claw-free line graph",
+                "size": 10,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "t free fermions Pauli anticommutation graph spin Hamiltonians solvable line graph",
+                "size": 10,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "t free fermions frustration graph",
+                "size": 10,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "t free fermion spin models Pauli frustration graph",
+                "size": 10,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "t free fermion solvable spin models",
+                "size": 10,
+                "sort": "mostcited"
+              },
+              {
+                "query": "free fermions in disguise",
+                "size": 5,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "solvable spin models frustration graph free fermions",
+                "size": 10,
+                "sort": "bestmatch"
+              }
+            ],
+            "cost_usd": 0.0195
+          },
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "question": "spin Hamiltonians solvable by free fermions from frustration graph of anticommuting Pauli terms (line graph, claw-free)",
+                "prefer_influential": false
+              }
+            ],
+            "cost_usd": 0.00934
+          }
+        },
+        {
+          "id": "h39",
+          "gold": 1380236,
+          "A": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "query": "t time reversal violating polarized proton deuteron scattering Glauber",
+                "size": 10,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "time reversal violation proton deuteron scattering Glauber",
+                "size": 10,
+                "sort": "bestmatch"
+              }
+            ],
+            "cost_usd": 0.01028
+          },
+          "B": {
+            "rank": null,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "question": "time reversal violating effects in polarized proton-deuteron scattering using Glauber theory",
+                "prefer_influential": false
+              }
+            ],
+            "cost_usd": 0.00945
+          }
+        },
+        {
+          "id": "h40",
+          "gold": 1622281,
+          "A": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "query": "t two right-handed neutrino seesaw trimaximal mixing leptonic CP phase",
+                "size": 15,
+                "sort": "bestmatch"
+              },
+              {
+                "query": "two right-handed neutrino trimaximal CP phase",
+                "size": 15,
+                "sort": "bestmatch"
+              }
+            ],
+            "cost_usd": 0.00983
+          },
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "question": "two right-handed neutrino seesaw with trimaximal mixing and predictions for leptonic CP phase",
+                "prefer_influential": false
+              }
+            ],
+            "cost_usd": 0.00982
+          }
+        }
+      ]
+    }
+  },
+  "total_cost_usd": 1.0778
+}

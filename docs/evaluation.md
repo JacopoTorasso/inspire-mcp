@@ -62,12 +62,29 @@ Costs at Anthropic list prices of November 2026; the whole run cost $2.05.
   Haiku (p < 0.001 for both), with four to five times fewer tool calls.
 * **A small model with the tool beats a large model without it**: Haiku with semantic_search (0.83)
   is well above Sonnet with INSPIRE search alone (0.60), at a twentieth of the cost per question.
-* **An agent searching alone does worse than the tool alone** (0.60 and 0.56 against 0.76). The
+* **On the development set, an agent searching alone did worse than the tool alone** (0.60 and 0.56
+  against 0.76; see the held-out check below for Sonnet). The
   transcripts show why: the agent looks for the description's words in titles (`t homotopy and t
   L-infinity and t string`) and keeps reformulating the same way, while the real titles share no word
   with the description ("Higher Structures in M-Theory"). semantic_search reads the abstracts.
-* With the tool, the agent adds a modest gain over the tool alone (Sonnet 0.86 against 0.76, p = 0.03):
+* With the tool, the agent adds a gain over the tool alone (Sonnet 0.86 against 0.76, p = 0.03):
   it can read the candidates and check them against the question.
+
+**Held-out confirmation** (the 40 papers frozen before any result, same protocol, cost $1.18):
+
+| system | MRR@10 [95% CI] | right paper first | tool calls per question |
+|---|---|---|---|
+| question typed into INSPIRE (31 of 40 return nothing) | 0.12 | 12% | 1 |
+| `semantic_search`, one call | 0.66 [0.52, 0.79] | 60% | 1 |
+| Claude Sonnet 5.5, INSPIRE search only | 0.64 [0.49, 0.79] | 62% | 5.1 (8 of 40 ran out of turns) |
+| **Claude Sonnet 5.5 + semantic_search** | **0.88** [0.78, 0.96] | **85%** | 1.5 |
+| Claude Haiku 5.5, INSPIRE search only | 0.53 [0.38, 0.68] | 53% | 7.5 |
+| **Claude Haiku 5.5 + semantic_search** | **0.84** [0.73, 0.94] | **82%** | 3.1 |
+
+The agent results replicate: with semantic_search both agents gain (Sonnet p = 0.02, Haiku p = 0.001)
+and beat the tool alone (p = 0.003 and 0.002). One development finding does not replicate: on held-out
+papers Sonnet searching alone (0.64) is level with single-call semantic_search (0.66, p = 0.83), so
+"an agent searching alone does worse than the tool alone" holds for Haiku, not for Sonnet.
 
 On the famous set every agent configuration finds the paper almost always (MRR 0.99 to 1.00, against
 0.30 for single-call semantic_search), because the model remembers these papers and searches for their

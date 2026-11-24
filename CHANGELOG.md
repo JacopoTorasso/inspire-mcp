@@ -22,7 +22,8 @@ Broader coverage and easier to try.
   frozen before any result: no reranker beats the default MiniLM-L6 on held-out data; bge-reranker-base
   is worse and seven times slower. Honest held-out quality: right paper first 60%.
 * Agentic baseline (`eval/agent_eval.py`): with semantic_search, Claude Sonnet 5.5 finds the right paper
-  first 85% of the time instead of 60% with INSPIRE search alone, in 1.3 tool calls instead of 5.8.
+  first 85% of the time instead of 60% with INSPIRE search alone, in 1.3 tool calls instead of 5.8;
+  confirmed on the held-out set (85% against 62%; Claude Haiku 5.5 82% against 53%).
 
 ## 0.4.0
 

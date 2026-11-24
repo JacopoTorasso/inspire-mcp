@@ -8,9 +8,9 @@
 
 inspire-mcp connects assistants such as Claude to [INSPIRE-HEP](https://inspirehep.net), the database
 of high energy physics papers, authors, conferences and jobs. Describe the paper you are looking for
-in your own words: on papers it had never seen during development, the server puts the right one
-first 60% of the time, 85% when an assistant like Claude drives it, against a few percent for the same
-question typed into INSPIRE's search box ([how this is measured](docs/evaluation.md)).
+in your own words. On 40 random papers set aside before any measurement, the server puts the right one
+first 60% of the time on its own and 85% when Claude drives it, against 12% for the same question typed
+into INSPIRE's search box ([how this is measured](docs/evaluation.md)).
 
 ## What you can ask
 
@@ -115,24 +115,23 @@ overview of a topic.
 
 ## How good is the search?
 
-Measured on papers picked at random from INSPIRE, each described by a question that does not repeat
-its title. The development set guided every design choice; the held-out set was frozen beforehand and
-used once, so it is the honest estimate:
+Measured on papers with 20 to 200 citations picked at random from INSPIRE, each described by a
+question that does not repeat its title. Two sets of 40: the **development** set guided every design
+choice; the **held-out** set was frozen beforehand and used only to confirm, so it is the honest estimate.
 
-| Approach | Right paper first, development (40) | Right paper first, held out (40) |
+| Approach | Right paper first, development | Right paper first, held out |
 |---|---|---|
-| Question typed into INSPIRE's search | 7% | not measured |
+| Question typed into INSPIRE's search | 7% | 12% |
 | Keywords of the question, INSPIRE's ranking | 38% | 40% |
-| **inspire-mcp** (keywords, then a cross-encoder re-reads every abstract) | **70%** | **60%** |
+| **inspire-mcp semantic search**, one call | **70%** | **60%** |
+| Claude Sonnet 5.5 searching INSPIRE by itself | 60% | 62% |
+| **Claude Sonnet 5.5 with inspire-mcp** | **85%** | **85%** |
+| Claude Haiku 5.5 searching INSPIRE by itself | 55% | 53% |
+| **Claude Haiku 5.5 with inspire-mcp** | **80%** | **82%** |
 
-And when an AI assistant drives the search itself, the server still matters:
-
-| Assistant, same 40 papers | Right paper first | Searches per question |
-|---|---|---|
-| Claude Sonnet 5.5 with INSPIRE search only | 60% | 5.8 |
-| **Claude Sonnet 5.5 with inspire-mcp's semantic search** | **85%** | 1.3 |
-| Claude Haiku 5.5 with INSPIRE search only | 55% | 8.2 |
-| **Claude Haiku 5.5 with inspire-mcp's semantic search** | **80%** | 2.7 |
+With the server, an assistant finds the paper far more often and with fewer searches: Claude Sonnet 5.5
+needs 1.3 to 1.5 searches per question instead of 5 to 6, and the small Claude Haiku 5.5 with the
+server does better than Claude Sonnet 5.5 without it.
 
 A second benchmark of 60 famous papers, the significance tests and the design choices that were
 tried and rejected are in [docs/evaluation.md](docs/evaluation.md).
