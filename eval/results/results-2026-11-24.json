@@ -1,0 +1,362 @@
+{
+  "date": "2026-11-24",
+  "corpus": {
+    "query": "topcite 1500+",
+    "size": 1396
+  },
+  "model": "BAAI/bge-small-en-v1.5",
+  "n_queries": 30,
+  "summary": {
+    "bm25": {
+      "R@1": 0.5666666666666667,
+      "R@5": 0.9,
+      "R@10": 0.9666666666666667,
+      "MRR@10": 0.7086507936507936
+    },
+    "dense": {
+      "R@1": 0.6666666666666666,
+      "R@5": 0.9333333333333333,
+      "R@10": 0.9666666666666667,
+      "MRR@10": 0.7597619047619047
+    },
+    "hybrid": {
+      "R@1": 0.6,
+      "R@5": 0.9666666666666667,
+      "R@10": 0.9666666666666667,
+      "MRR@10": 0.7611111111111111
+    },
+    "inspire_live": {
+      "R@1": 0.06666666666666667,
+      "R@5": 0.06666666666666667,
+      "R@10": 0.06666666666666667,
+      "MRR@10": 0.06666666666666667
+    }
+  },
+  "recall_at_10_by_query_style": {
+    "with_acronym_or_name": {
+      "n": 16,
+      "bm25": 1,
+      "dense": 1,
+      "hybrid": 1,
+      "inspire_live": 0.0625
+    },
+    "descriptive_only": {
+      "n": 14,
+      "bm25": 0.9285714285714286,
+      "dense": 0.9285714285714286,
+      "hybrid": 0.9285714285714286,
+      "inspire_live": 0.07142857142857142
+    }
+  },
+  "inspire_live": {
+    "zero_result_queries": 18,
+    "median_latency_s": 0.35479342700273264
+  },
+  "dense_cost": {
+    "index_build_s": 277.7532373389986,
+    "median_query_embed_s": 0.07649909250903875,
+    "embedding_dim": 384
+  },
+  "per_query": [
+    {
+      "id": "q01",
+      "query": "the ATLAS paper that announced a new particle consistent with the Higgs in 2012",
+      "gold": "Observation of a new particle in the search for the Standard Model Higgs boson with the ATLAS detector at the LHC",
+      "bm25": "1",
+      "dense": "1",
+      "hybrid": "1",
+      "inspire_live": "-",
+      "inspire_total_hits": 0
+    },
+    {
+      "id": "q02",
+      "query": "CMS discovery of a boson near 125 GeV at the LHC",
+      "gold": "Observation of a New Boson at a Mass of 125 GeV with the CMS Experiment at the LHC",
+      "bm25": "1",
+      "dense": "1",
+      "hybrid": "1",
+      "inspire_live": "-",
+      "inspire_total_hits": 37
+    },
+    {
+      "id": "q03",
+      "query": "original proposal that a conformal gauge theory at large N is dual to gravity on anti de Sitter space",
+      "gold": "The Large $N$ limit of superconformal field theories and supergravity",
+      "bm25": "5",
+      "dense": "3",
+      "hybrid": "4",
+      "inspire_live": "-",
+      "inspire_total_hits": 0
+    },
+    {
+      "id": "q04",
+      "query": "Witten paper relating boundary correlation functions to the bulk action in AdS",
+      "gold": "Anti de Sitter space and holography",
+      "bm25": "2",
+      "dense": "4",
+      "hybrid": "2",
+      "inspire_live": "-",
+      "inspire_total_hits": 0
+    },
+    {
+      "id": "q05",
+      "query": "computing gauge theory correlators from a string theory in one higher dimension, GKP prescription",
+      "gold": "Gauge theory correlators from noncritical string theory",
+      "bm25": "1",
+      "dense": "1",
+      "hybrid": "1",
+      "inspire_live": "-",
+      "inspire_total_hits": 0
+    },
+    {
+      "id": "q06",
+      "query": "warped extra dimension explaining the weak to Planck scale hierarchy with an exponential factor",
+      "gold": "A Large mass hierarchy from a small extra dimension",
+      "bm25": "1",
+      "dense": "1",
+      "hybrid": "1",
+      "inspire_live": "-",
+      "inspire_total_hits": 0
+    },
+    {
+      "id": "q07",
+      "query": "large extra dimensions lowering the fundamental gravity scale to the TeV, deviations from Newton law below a millimeter",
+      "gold": "The Hierarchy problem and new dimensions at a millimeter",
+      "bm25": "1",
+      "dense": "3",
+      "hybrid": "2",
+      "inspire_live": "-",
+      "inspire_total_hits": 0
+    },
+    {
+      "id": "q08",
+      "query": "cosmological parameters from the final release of the Planck CMB satellite",
+      "gold": "Planck 2018 results. VI. Cosmological parameters",
+      "bm25": "4",
+      "dense": "1",
+      "hybrid": "2",
+      "inspire_live": "-",
+      "inspire_total_hits": 23
+    },
+    {
+      "id": "q09",
+      "query": "first direct detection of gravitational waves from two merging black holes by LIGO",
+      "gold": "Observation of Gravitational Waves from a Binary Black Hole Merger",
+      "bm25": "2",
+      "dense": "5",
+      "hybrid": "2",
+      "inspire_live": "-",
+      "inspire_total_hits": 31
+    },
+    {
+      "id": "q10",
+      "query": "infrared and collinear safe sequential recombination jet algorithm that gives regular cone shaped jets",
+      "gold": "The anti-$k_t$ jet clustering algorithm",
+      "bm25": "1",
+      "dense": "1",
+      "hybrid": "1",
+      "inspire_live": "-",
+      "inspire_total_hits": 0
+    },
+    {
+      "id": "q11",
+      "query": "documentation of the C++ package used for fast jet finding at hadron colliders",
+      "gold": "FastJet User Manual",
+      "bm25": "3",
+      "dense": "1",
+      "hybrid": "1",
+      "inspire_live": "-",
+      "inspire_total_hits": 0
+    },
+    {
+      "id": "q12",
+      "query": "automated framework for NLO QCD cross sections matched to parton showers, MadGraph",
+      "gold": "The automated computation of tree-level and next-to-leading order differential cross sections, and their matching to parton shower simulations",
+      "bm25": "1",
+      "dense": "1",
+      "hybrid": "1",
+      "inspire_live": "1",
+      "inspire_total_hits": 1
+    },
+    {
+      "id": "q13",
+      "query": "overview of version 8.2 of the general purpose Monte Carlo event generator",
+      "gold": "An introduction to PYTHIA 8.2",
+      "bm25": "-",
+      "dense": "-",
+      "hybrid": "-",
+      "inspire_live": "-",
+      "inspire_total_hits": 0
+    },
+    {
+      "id": "q14",
+      "query": "entanglement entropy of a region computed as the area of a minimal surface in the bulk",
+      "gold": "Holographic derivation of entanglement entropy from AdS/CFT",
+      "bm25": "1",
+      "dense": "7",
+      "hybrid": "3",
+      "inspire_live": "-",
+      "inspire_total_hits": 17
+    },
+    {
+      "id": "q15",
+      "query": "KKLT construction of metastable positive cosmological constant vacua with stabilized moduli",
+      "gold": "De Sitter vacua in string theory",
+      "bm25": "1",
+      "dense": "1",
+      "hybrid": "1",
+      "inspire_live": "-",
+      "inspire_total_hits": 0
+    },
+    {
+      "id": "q16",
+      "query": "exact low energy effective action of N=2 super Yang-Mills and confinement through monopole condensation",
+      "gold": "Electric - magnetic duality, monopole condensation, and confinement in N=2 supersymmetric Yang-Mills theory",
+      "bm25": "1",
+      "dense": "1",
+      "hybrid": "1",
+      "inspire_live": "-",
+      "inspire_total_hits": 0
+    },
+    {
+      "id": "q17",
+      "query": "LHCb observation of hidden charm states with five quarks in Lambda b decays",
+      "gold": "Observation of $J/\\psi p$ Resonances Consistent with Pentaquark States in $\\Lambda_b^0 \\to J/\\psi K^- p$ Decays",
+      "bm25": "2",
+      "dense": "1",
+      "hybrid": "2",
+      "inspire_live": "-",
+      "inspire_total_hits": 1
+    },
+    {
+      "id": "q18",
+      "query": "Fermilab measurement of the muon g minus 2 anomaly",
+      "gold": "Measurement of the Positive Muon Anomalous Magnetic Moment to 0.46 ppm",
+      "bm25": "1",
+      "dense": "1",
+      "hybrid": "1",
+      "inspire_live": "-",
+      "inspire_total_hits": 4
+    },
+    {
+      "id": "q19",
+      "query": "strong coupling dualities relating the different superstring theories and eleven dimensional supergravity",
+      "gold": "String theory dynamics in various dimensions",
+      "bm25": "1",
+      "dense": "1",
+      "hybrid": "1",
+      "inspire_live": "-",
+      "inspire_total_hits": 1
+    },
+    {
+      "id": "q20",
+      "query": "NNPDF 3.0 neural network determination of proton structure for the second LHC run",
+      "gold": "Parton distributions for the LHC Run II",
+      "bm25": "7",
+      "dense": "2",
+      "hybrid": "2",
+      "inspire_live": "-",
+      "inspire_total_hits": 0
+    },
+    {
+      "id": "q21",
+      "query": "physics description and user manual of PYTHIA version 6.4",
+      "gold": "PYTHIA 6.4 Physics and Manual",
+      "bm25": "2",
+      "dense": "5",
+      "hybrid": "2",
+      "inspire_live": "-",
+      "inspire_total_hits": 0
+    },
+    {
+      "id": "q22",
+      "query": "type Ia supernovae showing that the expansion of the universe is accelerating, High-z team",
+      "gold": "Observational evidence from supernovae for an accelerating universe and a cosmological constant",
+      "bm25": "1",
+      "dense": "1",
+      "hybrid": "1",
+      "inspire_live": "-",
+      "inspire_total_hits": 0
+    },
+    {
+      "id": "q23",
+      "query": "Supernova Cosmology Project measurement of matter density and dark energy from distant supernovae",
+      "gold": "Measurements of $\\Omega$ and $\\Lambda$ from 42 High Redshift Supernovae",
+      "bm25": "3",
+      "dense": "3",
+      "hybrid": "2",
+      "inspire_live": "-",
+      "inspire_total_hits": 2
+    },
+    {
+      "id": "q24",
+      "query": "CTEQ6 global fit of parton densities including an uncertainty analysis",
+      "gold": "New generation of parton distributions with uncertainties from global QCD analysis",
+      "bm25": "6",
+      "dense": "2",
+      "hybrid": "4",
+      "inspire_live": "-",
+      "inspire_total_hits": 0
+    },
+    {
+      "id": "q25",
+      "query": "Super-Kamiokande evidence that muon neutrinos from the atmosphere change flavor",
+      "gold": "Evidence for oscillation of atmospheric neutrinos",
+      "bm25": "1",
+      "dense": "1",
+      "hybrid": "1",
+      "inspire_live": "-",
+      "inspire_total_hits": 0
+    },
+    {
+      "id": "q26",
+      "query": "SNO neutral current measurement proving solar electron neutrinos transform into other flavors",
+      "gold": "Direct evidence for neutrino flavor transformation from neutral current interactions in the Sudbury Neutrino Observatory",
+      "bm25": "2",
+      "dense": "1",
+      "hybrid": "1",
+      "inspire_live": "-",
+      "inspire_total_hits": 0
+    },
+    {
+      "id": "q27",
+      "query": "joint ATLAS and CMS determination of the Higgs mass from Run 1 data",
+      "gold": "Combined Measurement of the Higgs Boson Mass in $pp$ Collisions at $\\sqrt{s}=7$ and 8 TeV with the ATLAS and CMS Experiments",
+      "bm25": "3",
+      "dense": "1",
+      "hybrid": "1",
+      "inspire_live": "-",
+      "inspire_total_hits": 5
+    },
+    {
+      "id": "q28",
+      "query": "D-branes carry the Ramond-Ramond charges in type II string theory",
+      "gold": "Dirichlet Branes and Ramond-Ramond charges",
+      "bm25": "1",
+      "dense": "1",
+      "hybrid": "1",
+      "inspire_live": "-",
+      "inspire_total_hits": 1
+    },
+    {
+      "id": "q29",
+      "query": "toroidal compactification of the matrix model and noncommutative tori",
+      "gold": "Noncommutative geometry and matrix theory: Compactification on tori",
+      "bm25": "1",
+      "dense": "1",
+      "hybrid": "1",
+      "inspire_live": "1",
+      "inspire_total_hits": 2
+    },
+    {
+      "id": "q30",
+      "query": "review proving factorization theorems for hard scattering processes in perturbative QCD",
+      "gold": "Factorization of Hard Processes in QCD",
+      "bm25": "1",
+      "dense": "1",
+      "hybrid": "1",
+      "inspire_live": "-",
+      "inspire_total_hits": 0
+    }
+  ]
+}
