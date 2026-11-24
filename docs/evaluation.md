@@ -162,6 +162,9 @@ gain was noise, so the default stays MiniLM-L6, which is twice as fast. Two less
   the development set and 13 to 18 on the held-out set, depending on ties, against 28 and 24 for the
   cross-encoder (`eval/abstract_overlap.py`). Real-world accuracy is therefore likely lower than
   measured here.
+  Split by overlap, the cross-encoder puts the right paper first for 9 of 23 questions sharing less
+  than 60% of their words with the abstract, against 27 of 33 above 80% (all three sets pooled,
+  targets in the pool): it works best exactly when a question echoes the abstract.
 * 40 to 60 questions per set give wide intervals; only large differences are significant.
 * Known-item search measures finding one paper, not topical recall or answer quality.
 * The cross-encoder is a general web-search model (MS MARCO), not trained on physics.
