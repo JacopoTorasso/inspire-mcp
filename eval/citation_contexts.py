@@ -58,6 +58,7 @@ SOURCES = CACHE / "arxiv-src"
 OUT = CACHE / "citation_contexts.jsonl"
 EXCLUDE = ("queries.jsonl", "queries_longtail.jsonl", "queries_heldout.jsonl")
 ARXIV_DELAY = 3.0
+ARXIV_ATTEMPTS = 3
 MAX_SOURCE_BYTES = 40_000_000
 MIN_CONTENT_WORDS = 8
 MAX_WORDS = 60
@@ -164,11 +165,19 @@ async def fetch_source(http: httpx.AsyncClient, arxiv: str, last: list[float]) -
     path = SOURCES / (arxiv.replace("/", "_") + ".bin")
     if path.exists():
         return path.read_bytes() or None
-    wait = ARXIV_DELAY - (time.monotonic() - last[0])
-    if wait > 0:
-        await asyncio.sleep(wait)
-    last[0] = time.monotonic()
-    resp = await http.get(f"https://arxiv.org/e-print/{arxiv}")
+    for attempt in range(ARXIV_ATTEMPTS):
+        wait = ARXIV_DELAY * 4**attempt - (time.monotonic() - last[0])  # 3 s, then 12 s, then 48 s
+        if wait > 0:
+            await asyncio.sleep(wait)
+        last[0] = time.monotonic()
+        try:
+            resp = await http.get(f"https://arxiv.org/e-print/{arxiv}")
+        except httpx.TransportError:
+            continue
+        if resp.status_code != 429 and resp.status_code < 500:
+            break
+    else:
+        return None  # transient failure: nothing cached, a rerun tries again
     data = resp.content if resp.status_code == 200 and len(resp.content) <= MAX_SOURCE_BYTES else b""
     SOURCES.mkdir(parents=True, exist_ok=True)
     path.write_bytes(data)
