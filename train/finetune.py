@@ -2,7 +2,10 @@
 
 Each training question (make_data.py) is one group: the target paper and N hard negatives drawn from the
 INSPIRE pool the server would rerank for that question, scored together with a softmax cross-entropy
-(listwise) loss, as rerankers are usually trained. Papers are encoded exactly as the server encodes them:
+(listwise) loss, as rerankers are usually trained. With --teacher, questions ranked by train/teacher.py
+use the 20 candidates the teacher saw instead, and the loss adds the KL divergence from the teacher's
+ranking: a signal on every candidate, and no penalty on candidates the teacher finds relevant too.
+Papers are encoded exactly as the server encodes them:
 title, a full stop, the abstract, cut at 1200 characters (inspire_mcp.semantic.doc_text).
 
 After each epoch the model reranks the frozen development pools of eval/rerank_lab.py (citedev, the
@@ -40,18 +43,38 @@ def doc_text(p: dict) -> str:
 SOURCES = {"haiku": CACHE / "questions.jsonl", "s2": CACHE / "s2_judged.jsonl"}
 
 
+Group = tuple[str, list[str], list[float] | None]  # question, docs (the target first), teacher distribution
+
+
+def teacher_distribution(candidates: list[int], ranking: list[int], target: int) -> tuple[list[int], list[float]]:
+    """Candidates reordered with the target first, and the teacher's probabilities: 1/(rank+1) over its ten
+    choices, a small floor for the others."""
+    order = [target, *(c for c in candidates if c != target)]
+    weight = {r: 1.0 / (i + 1) for i, r in enumerate(ranking)}
+    raw = [weight.get(c, 0.02) for c in order]
+    total = sum(raw)
+    return order, [w / total for w in raw]
+
+
 def training_groups(
-    sources: list[str], negatives: int, skip_head: int, rng: random.Random
-) -> list[tuple[str, str, list[str]]]:
+    sources: list[str], negatives: int, skip_head: int, teacher: dict, rng: random.Random
+) -> list[Group]:
     papers = {p["recid"]: p for p in map(json.loads, (CACHE / "papers.jsonl").read_text().splitlines())}
     questions = {q["id"]: q for name in sources for q in map(json.loads, SOURCES[name].read_text().splitlines())}
-    groups = []
+    groups: list[Group] = []
     for line in (CACHE / "pools.jsonl").read_text().splitlines():
         try:
             row = json.loads(line)
         except json.JSONDecodeError:  # the last line while make_data.py pools is still writing
             continue
         if row["id"] not in questions:
+            continue
+        query = questions[row["id"]]["query"]
+        docs_by_id = {p["recid"]: p for p in row["pool"]} | {row["recid"]: papers[row["recid"]]}
+        if row["id"] in teacher:  # the candidates the teacher ranked, with its distribution
+            t = teacher[row["id"]]
+            order, probs = teacher_distribution(t["candidates"], t["ranking"], row["recid"])
+            groups.append((query, [doc_text(docs_by_id[c]) for c in order], probs))
             continue
         # the first candidates are the likeliest false negatives: papers that also answer a vague question
         pool = [p for p in row["pool"] if p["recid"] != row["recid"]][skip_head:]
@@ -61,7 +84,7 @@ def training_groups(
         head, tail = pool[:10], pool[10:]
         negs = rng.sample(head, min(len(head), negatives // 2))
         negs += rng.sample(tail, min(len(tail), negatives - len(negs)))
-        groups.append((questions[row["id"]]["query"], doc_text(papers[row["recid"]]), [doc_text(p) for p in negs]))
+        groups.append((query, [doc_text(papers[row["recid"]]), *(doc_text(p) for p in negs)], None))
     return groups
 
 
@@ -113,6 +136,8 @@ def main() -> None:
     parser.add_argument("--epochs", type=int, default=3)
     parser.add_argument("--negatives", type=int, default=15)
     parser.add_argument("--sources", default="haiku", help="haiku, s2 or haiku,s2")
+    parser.add_argument("--teacher", action="store_true", help="distil the rankings of train/teacher.py")
+    parser.add_argument("--hard-weight", type=float, default=0.5, help="share of the loss on the target alone")
     parser.add_argument("--skip-head", type=int, default=0, help="negatives never from the first N candidates")
     parser.add_argument("--groups-per-step", type=int, default=8)
     parser.add_argument("--lr", type=float, default=2e-5)
@@ -131,7 +156,9 @@ def main() -> None:
     best = base[SELECT]["MRR@10"]
     args.out.mkdir(parents=True, exist_ok=True)
 
-    groups = training_groups(args.sources.split(","), args.negatives, args.skip_head, rng)
+    teacher = json.loads((CACHE / "teacher.json").read_text()) if args.teacher else {}
+    groups = training_groups(args.sources.split(","), args.negatives, args.skip_head, teacher, rng)
+    print(f"{sum(g[2] is not None for g in groups)} of the groups have teacher rankings", flush=True)
     steps = max(1, args.epochs * ((len(groups) + args.groups_per_step - 1) // args.groups_per_step))
     opt = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=0.01)
     sched = torch.optim.lr_scheduler.LambdaLR(
@@ -145,18 +172,26 @@ def main() -> None:
         for i in range(0, len(groups), args.groups_per_step):
             chunk = groups[i : i + args.groups_per_step]
             queries, docs = [], []
-            for q, pos, negs in chunk:
-                queries += [q] * (1 + len(negs))
-                docs += [pos, *negs]
+            for q, group_docs, _ in chunk:
+                queries += [q] * len(group_docs)
+                docs += group_docs
             batch = tok(
                 queries, docs, truncation="only_second", max_length=MAX_TOKENS, padding=True, return_tensors="pt"
             ).to(device)
             with torch.autocast("cuda", dtype=torch.bfloat16):
                 logits = model(**batch).logits[:, 0].float()
-            per_group = logits.view(len(chunk), -1)  # the positive is column 0
-            loss = torch.nn.functional.cross_entropy(
-                per_group, torch.zeros(len(chunk), dtype=torch.long, device=device)
-            )
+            loss, start_row = torch.zeros((), device=device), 0
+            for _, group_docs, probs in chunk:
+                g = logits[start_row : start_row + len(group_docs)]
+                start_row += len(group_docs)
+                hard = -torch.log_softmax(g, dim=0)[0]  # the target is first
+                if probs is None:
+                    loss = loss + hard
+                else:
+                    target = torch.tensor(probs, device=device)
+                    soft = torch.nn.functional.kl_div(torch.log_softmax(g, dim=0), target, reduction="sum")
+                    loss = loss + args.hard_weight * hard + (1 - args.hard_weight) * soft
+            loss = loss / len(chunk)
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
             opt.step()
