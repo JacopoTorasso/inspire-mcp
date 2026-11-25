@@ -57,8 +57,9 @@ SETS = {
 PREFILTER = (15, 25, 35)  # BM25 keeps this many of the first 50 candidates for the cross-encoder
 
 
-async def frozen_pools(names: tuple[str, ...]) -> dict[str, list[dict]]:
-    path = CACHE / f"pools-{'-'.join(names)}.json"
+async def frozen_pools(names: tuple[str, ...], tag: str = "") -> dict[str, list[dict]]:
+    """Pools are frozen per set and per tag: a new tag fetches them again with the current candidates()."""
+    path = CACHE / f"pools-{'-'.join(names)}{'-' + tag if tag else ''}.json"
     if path.exists():
         return json.loads(path.read_text())
     out: dict[str, list[dict]] = {}
@@ -144,10 +145,11 @@ def evaluate(systems: dict[str, dict[str, list[int]]], sets: dict[str, list[dict
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--sets", choices=sorted(SETS), default="dev")
+    parser.add_argument("--pools", default="", help="tag of a pool snapshot, e.g. v2 after changing candidates()")
     parser.add_argument("--models", default="all", help="'all' or a comma-separated list")
     args = parser.parse_args()
     models = MODELS if args.models == "all" else args.models.split(",")
-    sets = asyncio.run(frozen_pools(SETS[args.sets]))
+    sets = asyncio.run(frozen_pools(SETS[args.sets], args.pools))
     cache = ScoreCache(CACHE / "xenc-scores.json")
     latency = {}
     for model in models:

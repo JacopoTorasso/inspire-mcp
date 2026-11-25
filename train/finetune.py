@@ -31,6 +31,12 @@ from transformers import AutoModelForSequenceClassification, AutoTokenizer
 ROOT = Path(__file__).resolve().parents[1]
 CACHE = ROOT / "train" / "cache"
 EVAL_POOLS = (ROOT / "eval" / "cache" / "pools-citedev.json", ROOT / "eval" / "cache" / "pools-famous-longtail.json")
+
+
+def eval_pools(tag: str) -> tuple[Path, ...]:
+    return tuple(p.with_name(f"{p.stem}-{tag}.json") for p in EVAL_POOLS) if tag else EVAL_POOLS
+
+
 MAX_CHARS = 1200  # inspire_mcp.semantic.doc_text
 MAX_TOKENS = 320
 # the epoch kept: best mean MRR@10 over the three development sets with the target inserted, so that no kind
@@ -110,15 +116,19 @@ def scores(model, tok, query: str, docs: list[str], device: str) -> list[float]:
     return out
 
 
-def evaluate(model, tok, device: str, pool_size: int = 50) -> dict[str, dict[str, float]]:
+def evaluate(
+    model, tok, device: str, pools: tuple[Path, ...] = EVAL_POOLS, deep: bool = False
+) -> dict[str, dict[str, float]]:
     """R@1 and MRR@10 on each development pool as the server sees it, and with the target inserted
     (replacing the last candidate when missing): the second measures the reranker alone, on every question."""
     gold = json.loads((CACHE / "gold_docs.json").read_text())
     model.eval()
     report = {}
-    for path in EVAL_POOLS:
+    variants = ("pool", "+target", "pool@100") if deep else ("pool", "+target")
+    for path in pools:
         for set_name, queries in json.loads(path.read_text()).items():
-            for variant in ("pool", "+target"):
+            for variant in variants:
+                pool_size = 100 if variant == "pool@100" else 50
                 r1, mrr = [], []
                 for q in queries:
                     pool = q["pool"][:pool_size]
@@ -129,7 +139,7 @@ def evaluate(model, tok, device: str, pool_size: int = 50) -> dict[str, dict[str
                     rank = ranked.index(q["recid"]) + 1 if q["recid"] in ranked else None
                     r1.append(float(rank == 1))
                     mrr.append(1 / rank if rank and rank <= 10 else 0.0)
-                name = set_name if variant == "pool" else f"{set_name}{variant}"
+                name = set_name if variant == "pool" else f"{set_name}{variant if variant[0] == '+' else '@100'}"
                 report[name] = {"R@1": round(statistics.fmean(r1), 3), "MRR@10": round(statistics.fmean(mrr), 3)}
     model.train()
     return report
@@ -148,6 +158,8 @@ def main() -> None:
     parser.add_argument("--groups-per-step", type=int, default=8)
     parser.add_argument("--lr", type=float, default=2e-5)
     parser.add_argument("--seed", type=int, default=7)
+    parser.add_argument("--eval-only", action="store_true", help="evaluate --base and stop")
+    parser.add_argument("--pools-tag", default="", help="evaluate on eval/cache/pools-*-<tag>.json")
     args = parser.parse_args()
     rng = random.Random(args.seed)
     torch.manual_seed(args.seed)
@@ -155,6 +167,9 @@ def main() -> None:
     tok = AutoTokenizer.from_pretrained(args.base)
     model = AutoModelForSequenceClassification.from_pretrained(args.base).to(device)
 
+    if args.eval_only:
+        print(json.dumps(evaluate(model, tok, device, eval_pools(args.pools_tag), deep=True)))
+        return
     log = {"args": {k: str(v) for k, v in vars(args).items()}, "epochs": []}
     base = evaluate(model, tok, device)
     log["epochs"].append({"epoch": 0, **base})
