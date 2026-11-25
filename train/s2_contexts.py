@@ -37,7 +37,8 @@ CACHE = ROOT / "train" / "cache"
 RAW = CACHE / "s2"
 OUT = CACHE / "s2_contexts.jsonl"
 API = "https://api.semanticscholar.org/graph/v1/paper/arXiv:{}/citations?fields=contexts&limit=100"
-DELAY = 1.1  # the public API allows about one request per second without a key
+DELAY = 2.0  # the public API without a key shares one rate limit among all its users: 429s are frequent
+ATTEMPTS = 8
 PER_PAPER = 3
 MARKER = re.compile(r"\[[^\]]*\]")
 SINGLE = re.compile(r"\[\d{1,3}\]")
@@ -48,8 +49,8 @@ async def fetch(http: httpx.AsyncClient, arxiv: str, last: list[float]) -> dict 
     path = RAW / (arxiv.replace("/", "_") + ".json")
     if path.exists():
         return json.loads(path.read_text())
-    for attempt in range(4):
-        wait = DELAY * 3**attempt - (time.monotonic() - last[0])
+    for attempt in range(ATTEMPTS):
+        wait = min(60.0, DELAY * 2**attempt) - (time.monotonic() - last[0])  # 2 s, 4 s, ... up to a minute
         if wait > 0:
             await asyncio.sleep(wait)
         last[0] = time.monotonic()
