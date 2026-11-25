@@ -27,7 +27,14 @@ sys.path.insert(0, str(Path(__file__).parent))
 from run_eval import bootstrap_ci, load_queries, paired_permutation_p, per_query_scores, rank_of, resolve_gold  # noqa: E402
 
 from inspire_mcp.client import InspireClient, Paper  # noqa: E402
-from inspire_mcp.semantic import BM25Reranker, DenseReranker, candidates, doc_text, rrf  # noqa: E402
+from inspire_mcp.semantic import (  # noqa: E402
+    BM25Reranker,
+    DenseReranker,
+    candidates,
+    doc_text,
+    load_cross_encoder,
+    rrf,
+)
 
 HERE = Path(__file__).parent
 CACHE = HERE / "cache"
@@ -88,7 +95,7 @@ def score_model(model: str, sets: dict[str, list[dict]], cache: ScoreCache) -> f
             todo = [p for p in q["pool"] if f"{model}|{q['id']}|{p['recid']}" not in cache.data]
             if not todo:
                 continue
-            encoder = encoder or TextCrossEncoder(model)
+            encoder = encoder or load_cross_encoder(TextCrossEncoder, model)  # also an exported directory
             start = time.perf_counter()
             texts = [doc_text(Paper(**p)) for p in todo]
             scores = list(encoder.rerank(q["query"], texts, batch_size=16))

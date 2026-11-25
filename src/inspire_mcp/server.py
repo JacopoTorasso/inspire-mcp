@@ -100,6 +100,7 @@ def build_server(
     warmup: bool = False,
     metrics: Metrics | None = None,
     reranker_kind: str = "auto",
+    reranker_model: str | None = None,
 ) -> MCPServer:
     """Build the server. With `warmup`, the reranker model loads in the background at startup and
     /readyz reports 503 until it is ready; otherwise it loads on the first semantic_search call."""
@@ -113,7 +114,9 @@ def build_server(
             if "r" not in state:
                 # Loading a model takes seconds of CPU and disk: keep it off the event loop.
                 loaded: Reranker = (
-                    reranker if reranker is not None else await asyncio.to_thread(make_reranker, reranker_kind)
+                    reranker
+                    if reranker is not None
+                    else await asyncio.to_thread(make_reranker, reranker_kind, reranker_model)
                 )
                 await asyncio.to_thread(loaded.scores, "warm up", [_WARMUP_PAPER])
                 state["r"] = loaded
@@ -444,7 +447,9 @@ async def _semantic(
         )
 
 
-def make_reranker(kind: str = "auto") -> Reranker:
+def make_reranker(kind: str = "auto", model: str | None = None) -> Reranker:
+    if model and kind in ("auto", "cross-encoder"):
+        return CrossEncoderReranker(model)  # a model asked for by name must load, not silently fall back
     factories = {"bm25": BM25Reranker, "dense": DenseReranker, "cross-encoder": CrossEncoderReranker}
     return factories[kind]() if kind in factories else default_reranker()
 
@@ -479,8 +484,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     """Every option can also be set with an INSPIRE_MCP_<NAME> environment variable."""
     parser = argparse.ArgumentParser(
         description="INSPIRE-HEP MCP server",
-        epilog="Environment: INSPIRE_MCP_TRANSPORT, _HOST, _PORT (or PORT), _RERANKER, _CACHE_TTL, _MIN_INTERVAL, "
-        "_ALLOWED_HOSTS, _RATE_LIMIT, _TRUST_PROXY, _LOG_FORMAT, _LOG_LEVEL, _CACHE (embedding cache directory).",
+        epilog="Environment: INSPIRE_MCP_TRANSPORT, _HOST, _PORT (or PORT), _RERANKER, _RERANKER_MODEL, _CACHE_TTL, "
+        "_MIN_INTERVAL, _ALLOWED_HOSTS, _RATE_LIMIT, _TRUST_PROXY, _LOG_FORMAT, _LOG_LEVEL, "
+        "_CACHE (embedding cache directory).",
     )
     parser.add_argument("--transport", choices=["stdio", "streamable-http"], default=_env("TRANSPORT", "stdio"))
     parser.add_argument("--host", default=_env("HOST", "127.0.0.1"))
@@ -490,6 +496,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         choices=["auto", "bm25", "dense", "cross-encoder"],
         default=_env("RERANKER", "auto"),
         help="semantic_search reranker: auto = cross-encoder if the 'semantic' extra is installed, else bm25",
+    )
+    parser.add_argument(
+        "--reranker-model",
+        default=_env("RERANKER_MODEL", "") or None,
+        help="cross-encoder to use: a fastembed model name, a Hugging Face repository with an ONNX export, "
+        "or a local directory with one (default: Xenova/ms-marco-MiniLM-L-6-v2)",
     )
     parser.add_argument(
         "--cache-ttl",
@@ -542,7 +554,9 @@ def main(argv: list[str] | None = None) -> None:
     logging.basicConfig(level=args.log_level.upper(), handlers=[handler], force=True)
     logging.getLogger("httpx").setLevel(logging.WARNING)
     client = InspireClient(min_interval=args.min_interval, cache_ttl=args.cache_ttl)
-    server = build_server(client, reranker_kind=args.reranker, warmup=args.transport != "stdio")
+    server = build_server(
+        client, reranker_kind=args.reranker, reranker_model=args.reranker_model, warmup=args.transport != "stdio"
+    )
     if args.transport == "stdio":
         server.run("stdio")
         return

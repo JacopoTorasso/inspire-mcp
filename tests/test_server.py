@@ -148,6 +148,9 @@ def test_options_read_environment(monkeypatch):
     monkeypatch.setenv("INSPIRE_MCP_RERANKER", "bm25")
     args = parse_args([])
     assert (args.transport, args.port, args.reranker) == ("streamable-http", 9001, "bm25")
+    assert args.reranker_model is None
+    monkeypatch.setenv("INSPIRE_MCP_RERANKER_MODEL", "/models/physics")
+    assert parse_args([]).reranker_model == "/models/physics"
     assert parse_args(["--port", "7000"]).port == 7000  # flags win over environment
 
 

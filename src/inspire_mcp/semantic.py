@@ -183,20 +183,40 @@ class DenseReranker:
         return (mat @ q).tolist()
 
 
+DEFAULT_CROSS_ENCODER = "Xenova/ms-marco-MiniLM-L-6-v2"
+
+
+def load_cross_encoder(text_cross_encoder: type, model: str):
+    """A fastembed cross-encoder: a model fastembed ships, a directory with an ONNX export
+    (config and tokenizer files, onnx/model.onnx), or a Hugging Face repository laid out the same way."""
+    supported = {m["model"] for m in text_cross_encoder.list_supported_models()}
+    if model in supported:
+        return text_cross_encoder(model)
+    from fastembed.common.model_description import ModelSource
+
+    path = Path(model).expanduser()
+    name = f"local/{path.resolve().name}" if path.is_dir() else model
+    if name not in supported:  # registering a name twice raises
+        text_cross_encoder.add_custom_model(name, sources=ModelSource(hf=name), model_file="onnx/model.onnx")
+    if path.is_dir():
+        return text_cross_encoder(name, specific_model_path=str(path))
+    return text_cross_encoder(name)
+
+
 class CrossEncoderReranker:
     """Scores (question, abstract) pairs jointly with a cross-encoder: slower per pair than comparing
     cached embeddings, but much better at telling apart abstracts on the same topic."""
 
     fuse_with_inspire = False
 
-    def __init__(self, model: str = "Xenova/ms-marco-MiniLM-L-6-v2") -> None:
+    def __init__(self, model: str = DEFAULT_CROSS_ENCODER) -> None:
         try:
             from fastembed.rerank.cross_encoder import TextCrossEncoder
         except ImportError as exc:  # pragma: no cover - exercised only without the extra
             raise RuntimeError("cross-encoder reranking needs the 'semantic' extra") from exc
         self.model_name = model
-        self.name = f"cross-encoder:{model.split('/')[-1]}"
-        self._model = TextCrossEncoder(model)
+        self.name = f"cross-encoder:{model.rstrip('/').split('/')[-1]}"
+        self._model = load_cross_encoder(TextCrossEncoder, model)
         self._lock = threading.Lock()
 
     def scores(self, query: str, docs: Sequence[Paper]) -> list[float]:

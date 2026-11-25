@@ -1,4 +1,5 @@
 import httpx
+import pytest
 import respx
 
 from inspire_mcp.client import BASE_URL, InspireClient, Paper
@@ -179,3 +180,41 @@ def test_default_reranker_falls_back_when_models_are_missing(monkeypatch):
     monkeypatch.setattr(sem, "CrossEncoderReranker", unavailable)
     monkeypatch.setattr(sem, "DenseReranker", unavailable)
     assert isinstance(sem.default_reranker(), BM25Reranker)
+
+
+class FakeCrossEncoder:
+    registered: list[str] = []
+    loaded: list[tuple[str, str | None]] = []
+
+    @classmethod
+    def list_supported_models(cls):
+        return [{"model": "Xenova/ms-marco-MiniLM-L-6-v2"}, *({"model": m} for m in cls.registered)]
+
+    @classmethod
+    def add_custom_model(cls, name, sources, model_file):
+        if name in cls.registered:
+            raise ValueError("already registered")
+        cls.registered.append(name)
+
+    def __init__(self, name, specific_model_path=None):
+        self.loaded.append((name, specific_model_path))
+
+
+def test_cross_encoder_from_fastembed_local_directory_or_hub(tmp_path):
+    pytest.importorskip("fastembed")
+    from inspire_mcp.semantic import load_cross_encoder
+
+    FakeCrossEncoder.registered, FakeCrossEncoder.loaded = [], []
+    load_cross_encoder(FakeCrossEncoder, "Xenova/ms-marco-MiniLM-L-6-v2")
+    model_dir = tmp_path / "physics-reranker"
+    model_dir.mkdir()
+    load_cross_encoder(FakeCrossEncoder, str(model_dir))
+    load_cross_encoder(FakeCrossEncoder, str(model_dir))  # a second load must not register the name again
+    load_cross_encoder(FakeCrossEncoder, "someone/physics-reranker-onnx")
+    assert FakeCrossEncoder.loaded == [
+        ("Xenova/ms-marco-MiniLM-L-6-v2", None),
+        ("local/physics-reranker", str(model_dir)),
+        ("local/physics-reranker", str(model_dir)),
+        ("someone/physics-reranker-onnx", None),
+    ]
+    assert FakeCrossEncoder.registered == ["local/physics-reranker", "someone/physics-reranker-onnx"]
