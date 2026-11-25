@@ -143,6 +143,33 @@ def test_phrase_terms_pairs_adjacent_content_words_only():
     ]
 
 
+def test_specific_terms_keep_the_rarest_words_in_question_order():
+    from inspire_mcp.semantic import specific_terms
+
+    question = "as was shown before in this setting, the leptoquark couplings fix the muon anomalous moment"
+    rare = specific_terms(question, n=3)
+    assert len(rare) == 3 and "leptoquark" in rare
+    assert rare == [t for t in content_terms(question) if t in rare]  # question order
+
+
+@respx.mock
+async def test_long_questions_also_query_their_rarest_words():
+    route = respx.get(f"{BASE_URL}/literature").mock(return_value=httpx.Response(200, json=hits(ATLAS_HIGGS)))
+    long_question = (
+        "it was also argued in that earlier analysis, which looked at a similar regime of parameters and found "
+        "comparable results with a different method and larger uncertainties, that the sphaleron rate controls "
+        "the baryogenesis yield"
+    )
+    async with InspireClient(min_interval=0) as client:
+        await candidates(client, long_question, pool=10)
+        await candidates(client, "warped extra dimension", pool=10)
+    queries = [c.request.url.params["q"] for c in route.calls]
+    # the rare words come after the twelfth content word: only the second OR query carries them
+    assert any("sphaleron" in q and "baryogenesis" in q and " or " in q for q in queries)
+    assert relaxed_query(long_question) in queries and "sphaleron" not in relaxed_query(long_question)
+    assert len([q for q in queries if "warped" in q]) == 2  # a short question: strict and relaxed only
+
+
 def test_interleave_round_robin_without_duplicates():
     a, b, c = paper(1, "a"), paper(2, "b"), paper(3, "c")
     assert [p.recid for p in interleave([a, b], [b, c], [c])] == [1, 2, 3]
