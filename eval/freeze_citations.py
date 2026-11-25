@@ -20,6 +20,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 JUDGED = HERE / "cache" / "citation_contexts_judged.jsonl"
 OUT = HERE / "queries_citations.jsonl"
+TEXTS = HERE / "cache" / "queries_citations.texts.jsonl"  # the sentences, read by run_eval.load_queries()
 
 
 def sentence_hash(query: str) -> str:
@@ -43,6 +44,7 @@ def main() -> None:
         for r in chosen.values()
     ]
     OUT.write_text("".join(json.dumps(r) + "\n" for r in frozen))
+    TEXTS.write_text("".join(json.dumps(r, ensure_ascii=False) + "\n" for r in chosen.values()))
     print(f"{len(frozen)} questions from {len(rows)} judged sentences, written to {OUT.name}")
 
 

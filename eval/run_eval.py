@@ -54,7 +54,7 @@ QUERY_SETS = {"famous": "queries.jsonl", "longtail": "queries_longtail.jsonl"}
 # Held out: used once, to confirm a choice made on the sets above (see eval/README.md).
 # citations: sentences of citing papers, frozen by freeze_citations.py; the text stays in eval/cache.
 HELDOUT_SETS = {"heldout": "queries_heldout.jsonl", "citations": "queries_citations.jsonl"}
-CITATION_TEXTS = CACHE / "citation_contexts_judged.jsonl"
+CITATION_TEXTS = CACHE / "queries_citations.texts.jsonl"  # written by freeze_citations.py
 CORPUS_QUERY = "topcite 1500+"
 KS = (1, 5, 10)
 BOOTSTRAP = 2000
