@@ -50,11 +50,14 @@ from inspire_mcp.semantic import (  # noqa: E402
 HERE = Path(__file__).parent
 CACHE = HERE / "cache"
 RESULTS = HERE / "results"
-QUERY_SETS = {"famous": "queries.jsonl", "longtail": "queries_longtail.jsonl"}
+QUERY_SETS = {
+    "famous": "queries.jsonl",
+    "longtail": "queries_longtail.jsonl",
+    "citedev": "queries_citations_dev.jsonl",  # citation contexts, development targets
+}
 # Held out: used once, to confirm a choice made on the sets above (see eval/README.md).
 # citations: sentences of citing papers, frozen by freeze_citations.py; the text stays in eval/cache.
 HELDOUT_SETS = {"heldout": "queries_heldout.jsonl", "citations": "queries_citations.jsonl"}
-CITATION_TEXTS = CACHE / "queries_citations.texts.jsonl"  # written by freeze_citations.py
 CORPUS_QUERY = "topcite 1500+"
 KS = (1, 5, 10)
 BOOTSTRAP = 2000
@@ -131,9 +134,9 @@ def load_queries(name: str) -> list[dict]:
     path = HERE / {**QUERY_SETS, **HELDOUT_SETS}[name]
     rows = [json.loads(line) for line in path.read_text().splitlines() if line.strip()]
     if rows and "query" not in rows[0]:  # ids only: the text comes from eval/cache, checked by hash
-        from freeze_citations import sentence_hash
+        from freeze_citations import sentence_hash, texts_path
 
-        texts = {r["id"]: r["query"] for r in map(json.loads, CITATION_TEXTS.read_text().splitlines())}
+        texts = {r["id"]: r["query"] for r in map(json.loads, texts_path(path).read_text().splitlines())}
         for r in rows:
             r["query"] = texts[r["id"]]
             if sentence_hash(r["query"]) != r["sha"]:
