@@ -16,6 +16,7 @@ title words; at most 3 per training paper, from different citing papers. The out
 
 from __future__ import annotations
 
+import argparse
 import asyncio
 import json
 import re
@@ -82,11 +83,14 @@ def usable(sentence: str, title: str) -> tuple[str, str] | None:
     return question, context
 
 
-async def main() -> None:
+async def main(offline: bool, out: Path) -> None:
     papers = [json.loads(line) for line in (CACHE / "papers.jsonl").read_text().splitlines() if line.strip()]
     rows, last, failed = [], [0.0], 0
     async with httpx.AsyncClient(headers={"User-Agent": USER_AGENT}, timeout=60) as http:
         for n, p in enumerate(papers, 1):
+            cached = RAW / (p["arxiv"].replace("/", "_") + ".json")
+            if offline and not cached.exists():
+                continue
             data = await fetch(http, p["arxiv"], last)
             if data is None:
                 failed += 1
@@ -114,9 +118,13 @@ async def main() -> None:
                     break
             if n % 100 == 0:
                 print(f"papers {n}/{len(papers)}, sentences {len(rows)}", flush=True)
-    OUT.write_text("".join(json.dumps(r, ensure_ascii=False) + "\n" for r in rows))
+    out.write_text("".join(json.dumps(r, ensure_ascii=False) + "\n" for r in rows))
     print(f"{len(rows)} sentences for {len({r['recid'] for r in rows})} papers, {failed} requests failed")
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--offline", action="store_true", help="only papers already downloaded")
+    parser.add_argument("--out", type=Path, default=OUT)
+    args = parser.parse_args()
+    asyncio.run(main(args.offline, args.out))
