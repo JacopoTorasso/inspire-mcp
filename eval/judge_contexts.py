@@ -10,7 +10,7 @@ sentences that echo it, bringing back the vocabulary bias these questions exist 
 Verdicts are cached per (model, sentence) in eval/cache/judge.json, so a rerun only pays for new sentences.
 The API key is read like agent_eval.py does.
 
-    uv run --extra eval python eval/judge_contexts.py
+    uv run --extra eval python eval/judge_contexts.py [batch.jsonl ...]
 """
 
 from __future__ import annotations
@@ -86,8 +86,9 @@ async def judge(client: AsyncAnthropic, context: str, sem: asyncio.Semaphore) ->
 async def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--concurrency", type=int, default=4)
+    parser.add_argument("inputs", type=Path, nargs="*", default=[IN], help="batches of citation_contexts.py")
     args = parser.parse_args()
-    rows = [json.loads(line) for line in IN.read_text().splitlines() if line.strip()]
+    rows = [json.loads(line) for f in args.inputs for line in f.read_text().splitlines() if line.strip()]
     cache: dict[str, dict] = json.loads(VERDICTS.read_text()) if VERDICTS.exists() else {}
     todo = [r for r in rows if key(r["context"]) not in cache]
     client = AsyncAnthropic(api_key=load_key(), max_retries=3)
