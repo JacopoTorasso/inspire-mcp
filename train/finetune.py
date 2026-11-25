@@ -10,8 +10,8 @@ title, a full stop, the abstract, cut at 1200 characters (inspire_mcp.semantic.d
 
 After each epoch the model reranks the frozen development pools of eval/rerank_lab.py (citedev, the
 citation-context questions, and the older famous and longtail sets), as is and with the target paper
-inserted into the pool (gold_docs.py); the epoch kept is the best on citedev with the target inserted,
-which judges the reranker on all 64 questions. The test sets are never read here.
+inserted into the pool (gold_docs.py); the epoch kept is the best on the mean of the three sets with the
+target inserted, which judges the reranker on all 164 questions. The test sets are never read here.
 
     .venv-train/bin/python train/finetune.py --base cross-encoder/ms-marco-MiniLM-L6-v2 --out train/models/l6
 """
@@ -33,7 +33,13 @@ CACHE = ROOT / "train" / "cache"
 EVAL_POOLS = (ROOT / "eval" / "cache" / "pools-citedev.json", ROOT / "eval" / "cache" / "pools-famous-longtail.json")
 MAX_CHARS = 1200  # inspire_mcp.semantic.doc_text
 MAX_TOKENS = 320
-SELECT = "citedev+target"  # the epoch kept: best reranker on realistic questions, all 64 of them
+# the epoch kept: best mean MRR@10 over the three development sets with the target inserted, so that no kind
+# of question is traded for another (decided before the bge distillation results were seen)
+SELECT = ("citedev+target", "famous+target", "longtail+target")
+
+
+def selection(report: dict) -> float:
+    return statistics.fmean(report[name]["MRR@10"] for name in SELECT)
 
 
 def doc_text(p: dict) -> str:
@@ -153,7 +159,7 @@ def main() -> None:
     base = evaluate(model, tok, device)
     log["epochs"].append({"epoch": 0, **base})
     print("epoch 0 (base model):", json.dumps(base), flush=True)
-    best = base[SELECT]["MRR@10"]
+    best = selection(base)
     args.out.mkdir(parents=True, exist_ok=True)
 
     teacher = json.loads((CACHE / "teacher.json").read_text()) if args.teacher else {}
@@ -205,13 +211,15 @@ def main() -> None:
             json.dumps(report),
             flush=True,
         )
-        if report[SELECT]["MRR@10"] > best:
-            best = report[SELECT]["MRR@10"]
+        if selection(report) > best:
+            best = selection(report)
             model.save_pretrained(args.out)
             tok.save_pretrained(args.out)
             log["best_epoch"] = epoch
     (args.out / "training_log.json").write_text(json.dumps(log, indent=1))
-    print(f"best {SELECT} MRR@10 {best:.3f} at epoch {log.get('best_epoch', 0)}; model in {args.out}")
+    print(
+        f"best mean MRR@10 with the target inserted {best:.3f} at epoch {log.get('best_epoch', 0)}; model in {args.out}"
+    )
 
 
 if __name__ == "__main__":
