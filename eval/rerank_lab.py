@@ -27,7 +27,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 from run_eval import bootstrap_ci, load_queries, paired_permutation_p, per_query_scores, rank_of, resolve_gold  # noqa: E402
 
 from inspire_mcp.client import InspireClient, Paper  # noqa: E402
-from inspire_mcp.semantic import DenseReranker, candidates, doc_text, rrf  # noqa: E402
+from inspire_mcp.semantic import BM25Reranker, DenseReranker, candidates, doc_text, rrf  # noqa: E402
 
 HERE = Path(__file__).parent
 CACHE = HERE / "cache"
@@ -41,7 +41,13 @@ MODELS = [
     "jinaai/jina-reranker-v2-base-multilingual",
 ]
 BASELINE = "Xenova/ms-marco-MiniLM-L-6-v2@50"
-SETS = {"dev": ("famous", "longtail"), "test": ("heldout",)}
+SETS = {
+    "dev": ("famous", "longtail"),
+    "citedev": ("citedev",),  # citation contexts: questions not written from the abstract
+    "test": ("heldout",),
+    "citetest": ("citations",),  # frozen test set: run once, to confirm
+}
+PREFILTER = (15, 25, 35)  # BM25 keeps this many of the first 50 candidates for the cross-encoder
 
 
 async def frozen_pools(names: tuple[str, ...]) -> dict[str, list[dict]]:
@@ -142,6 +148,7 @@ def main() -> None:
         print(f"scored {model}: {latency[model]:.2f}s per 50 candidates", flush=True)
 
     dense = DenseReranker(cache_path=CACHE)
+    bm25 = BM25Reranker()
     systems: dict[str, dict[str, list[int]]] = {}
     for queries in sets.values():
         for q in queries:
@@ -154,12 +161,22 @@ def main() -> None:
                 )
             ]
             systems.setdefault("inspire OR order@50", {})[q["id"]] = inspire_order[:50]
+            bm25_order = [
+                d.recid
+                for _, d in sorted(zip(bm25.scores(q["query"], docs[:50]), docs[:50], strict=True), key=lambda t: -t[0])
+            ]
+            systems.setdefault("bm25@50", {})[q["id"]] = bm25_order
             for model in models:
                 for pool in (50, 100):
                     systems.setdefault(f"{model}@{pool}", {})[q["id"]] = ranking(model, q, pool, cache)
                 systems.setdefault(f"{model}@50 + dense (rrf)", {})[q["id"]] = rrf(
                     ranking(model, q, 50, cache), dense_order
                 )
+                for keep in PREFILTER:
+                    kept = set(bm25_order[:keep])
+                    systems.setdefault(f"{model}@50, BM25 top {keep} first", {})[q["id"]] = [
+                        r for r in ranking(model, q, 50, cache) if r in kept
+                    ]
             if len(models) >= 2:
                 top = [ranking(m, q, 50, cache) for m in models]
                 systems.setdefault("ensemble of all cross-encoders@50 (rrf)", {})[q["id"]] = rrf(*top)
