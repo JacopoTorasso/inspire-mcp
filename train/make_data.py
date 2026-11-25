@@ -218,9 +218,20 @@ async def questions(limit: int | None, concurrency: int) -> None:
 # ---------- pools ----------
 
 
-async def pools() -> None:
-    rows = [json.loads(line) for line in DATA.read_text().splitlines() if line.strip()]
-    done = {json.loads(line)["id"] for line in POOLS.read_text().splitlines()} if POOLS.exists() else set()
+def read_pools() -> list[dict]:
+    """The pools written so far; a line cut by an interrupted run is skipped, and fetched again."""
+    rows = []
+    for line in POOLS.read_text().splitlines() if POOLS.exists() else []:
+        try:
+            rows.append(json.loads(line))
+        except json.JSONDecodeError:
+            continue
+    return rows
+
+
+async def pools(questions: Path) -> None:
+    rows = [json.loads(line) for line in questions.read_text().splitlines() if line.strip()]
+    done = {r["id"] for r in read_pools()}
     excluded = eval_papers()
     papers = {json.loads(line)["recid"] for line in PAPERS.read_text().splitlines() if line.strip()}
     todo = [r for r in rows if r["id"] not in done]
@@ -245,14 +256,15 @@ def main() -> None:
     q = sub.add_parser("questions")
     q.add_argument("--limit", type=int)
     q.add_argument("--concurrency", type=int, default=8)
-    sub.add_parser("pools")
+    pl = sub.add_parser("pools")
+    pl.add_argument("--questions", type=Path, default=DATA, help="also train/cache/s2_judged.jsonl")
     args = parser.parse_args()
     if args.step == "sample":
         asyncio.run(sample(args.n, args.seed))
     elif args.step == "questions":
         asyncio.run(questions(args.limit, args.concurrency))
     else:
-        asyncio.run(pools())
+        asyncio.run(pools(args.questions))
 
 
 if __name__ == "__main__":

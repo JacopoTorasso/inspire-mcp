@@ -6,8 +6,9 @@ INSPIRE pool the server would rerank for that question, scored together with a s
 title, a full stop, the abstract, cut at 1200 characters (inspire_mcp.semantic.doc_text).
 
 After each epoch the model reranks the frozen development pools of eval/rerank_lab.py (citedev, the
-citation-context questions, and the older famous and longtail sets) and the best epoch on citedev is
-kept. The test sets are never read here.
+citation-context questions, and the older famous and longtail sets), as is and with the target paper
+inserted into the pool (gold_docs.py); the epoch kept is the best on citedev with the target inserted,
+which judges the reranker on all 64 questions. The test sets are never read here.
 
     .venv-train/bin/python train/finetune.py --base cross-encoder/ms-marco-MiniLM-L6-v2 --out train/models/l6
 """
@@ -29,19 +30,31 @@ CACHE = ROOT / "train" / "cache"
 EVAL_POOLS = (ROOT / "eval" / "cache" / "pools-citedev.json", ROOT / "eval" / "cache" / "pools-famous-longtail.json")
 MAX_CHARS = 1200  # inspire_mcp.semantic.doc_text
 MAX_TOKENS = 320
+SELECT = "citedev+target"  # the epoch kept: best reranker on realistic questions, all 64 of them
 
 
 def doc_text(p: dict) -> str:
     return f"{p['title']}. {p.get('abstract') or ''}"[:MAX_CHARS]
 
 
-def training_groups(negatives: int, rng: random.Random) -> list[tuple[str, str, list[str]]]:
+SOURCES = {"haiku": CACHE / "questions.jsonl", "s2": CACHE / "s2_judged.jsonl"}
+
+
+def training_groups(
+    sources: list[str], negatives: int, skip_head: int, rng: random.Random
+) -> list[tuple[str, str, list[str]]]:
     papers = {p["recid"]: p for p in map(json.loads, (CACHE / "papers.jsonl").read_text().splitlines())}
-    questions = {q["id"]: q for q in map(json.loads, (CACHE / "questions.jsonl").read_text().splitlines())}
+    questions = {q["id"]: q for name in sources for q in map(json.loads, SOURCES[name].read_text().splitlines())}
     groups = []
     for line in (CACHE / "pools.jsonl").read_text().splitlines():
-        row = json.loads(line)
-        pool = [p for p in row["pool"] if p["recid"] != row["recid"]]
+        try:
+            row = json.loads(line)
+        except json.JSONDecodeError:  # the last line while make_data.py pools is still writing
+            continue
+        if row["id"] not in questions:
+            continue
+        # the first candidates are the likeliest false negatives: papers that also answer a vague question
+        pool = [p for p in row["pool"] if p["recid"] != row["recid"]][skip_head:]
         if len(pool) < negatives:
             continue
         # half from the head of the pool (what the reranker must beat), half from the rest
@@ -69,19 +82,26 @@ def scores(model, tok, query: str, docs: list[str], device: str) -> list[float]:
 
 
 def evaluate(model, tok, device: str, pool_size: int = 50) -> dict[str, dict[str, float]]:
+    """R@1 and MRR@10 on each development pool as the server sees it, and with the target inserted
+    (replacing the last candidate when missing): the second measures the reranker alone, on every question."""
+    gold = json.loads((CACHE / "gold_docs.json").read_text())
     model.eval()
     report = {}
     for path in EVAL_POOLS:
         for set_name, queries in json.loads(path.read_text()).items():
-            r1, mrr = [], []
-            for q in queries:
-                pool = q["pool"][:pool_size]
-                s = scores(model, tok, q["query"], [doc_text(p) for p in pool], device)
-                ranked = [p["recid"] for _, p in sorted(zip(s, pool, strict=True), key=lambda t: -t[0])]
-                rank = ranked.index(q["recid"]) + 1 if q["recid"] in ranked else None
-                r1.append(float(rank == 1))
-                mrr.append(1 / rank if rank and rank <= 10 else 0.0)
-            report[set_name] = {"R@1": statistics.fmean(r1), "MRR@10": statistics.fmean(mrr)}
+            for variant in ("pool", "+target"):
+                r1, mrr = [], []
+                for q in queries:
+                    pool = q["pool"][:pool_size]
+                    if variant == "+target" and q["recid"] not in {p["recid"] for p in pool}:
+                        pool = [*pool[: pool_size - 1], gold[str(q["recid"])]]
+                    s = scores(model, tok, q["query"], [doc_text(p) for p in pool], device)
+                    ranked = [p["recid"] for _, p in sorted(zip(s, pool, strict=True), key=lambda t: -t[0])]
+                    rank = ranked.index(q["recid"]) + 1 if q["recid"] in ranked else None
+                    r1.append(float(rank == 1))
+                    mrr.append(1 / rank if rank and rank <= 10 else 0.0)
+                name = set_name if variant == "pool" else f"{set_name}{variant}"
+                report[name] = {"R@1": round(statistics.fmean(r1), 3), "MRR@10": round(statistics.fmean(mrr), 3)}
     model.train()
     return report
 
@@ -92,6 +112,8 @@ def main() -> None:
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--epochs", type=int, default=3)
     parser.add_argument("--negatives", type=int, default=15)
+    parser.add_argument("--sources", default="haiku", help="haiku, s2 or haiku,s2")
+    parser.add_argument("--skip-head", type=int, default=0, help="negatives never from the first N candidates")
     parser.add_argument("--groups-per-step", type=int, default=8)
     parser.add_argument("--lr", type=float, default=2e-5)
     parser.add_argument("--seed", type=int, default=7)
@@ -106,10 +128,10 @@ def main() -> None:
     base = evaluate(model, tok, device)
     log["epochs"].append({"epoch": 0, **base})
     print("epoch 0 (base model):", json.dumps(base), flush=True)
-    best = base["citedev"]["MRR@10"]
+    best = base[SELECT]["MRR@10"]
     args.out.mkdir(parents=True, exist_ok=True)
 
-    groups = training_groups(args.negatives, rng)
+    groups = training_groups(args.sources.split(","), args.negatives, args.skip_head, rng)
     steps = max(1, args.epochs * ((len(groups) + args.groups_per_step - 1) // args.groups_per_step))
     opt = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=0.01)
     sched = torch.optim.lr_scheduler.LambdaLR(
@@ -148,13 +170,13 @@ def main() -> None:
             json.dumps(report),
             flush=True,
         )
-        if report["citedev"]["MRR@10"] > best:
-            best = report["citedev"]["MRR@10"]
+        if report[SELECT]["MRR@10"] > best:
+            best = report[SELECT]["MRR@10"]
             model.save_pretrained(args.out)
             tok.save_pretrained(args.out)
             log["best_epoch"] = epoch
     (args.out / "training_log.json").write_text(json.dumps(log, indent=1))
-    print(f"best citedev MRR@10 {best:.3f} at epoch {log.get('best_epoch', 0)}; model in {args.out}")
+    print(f"best {SELECT} MRR@10 {best:.3f} at epoch {log.get('best_epoch', 0)}; model in {args.out}")
 
 
 if __name__ == "__main__":
