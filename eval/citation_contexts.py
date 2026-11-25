@@ -11,7 +11,10 @@ For each sampled target (same population as the longtail set, new seed, developm
    names one of the first authors or the collaboration;
 4. the sentence around each \\cite of those keys, kept only when it cites nothing else, names no author
    of the target, repeats no three consecutive title words, has at most two formulas and at least 8
-   content words.
+   content words. Formulas become plain text as a user would type them ($\\Xi_c(2930)$ -> Xi_c(2930),
+   $\\tau_\\chi$ -> tau_chi): they often name the very object the paper is about, and deleting them
+   left holes such as "the state labeled is claimed". Sentences with an equation (=, <, >), a macro
+   that has no plain-text form, or an author's own macro outside formulas (\\pT, \\Lya) are dropped.
 
 The output keeps each sentence twice: `query`, the sentence without the citation, and `context`, with
 [CITED] where the target was cited, for judge_contexts.py.
@@ -65,6 +68,20 @@ MATH = re.compile(r"\$\$.*?\$\$|\$[^$]*\$|\\\(.*?\\\)|\\\[.*?\\\]", re.S)
 ENVS = re.compile(r"\\begin\{(equation|align|eqnarray|figure|table|multline|gather)\*?\}.*?\\end\{\1\*?\}", re.S)
 COMMANDS = re.compile(r"\\(?:ref|eqref|label|footnote|url|href)\*?\{[^}]*\}")
 MARKUP = re.compile(r"\\(?:emph|textit|textbf|textrm|mathrm|it|bf|em)\b\s*")
+MACRO = re.compile(r"\\[a-zA-Z]+")
+GREEK = set(
+    "alpha beta gamma delta epsilon varepsilon zeta eta theta vartheta iota kappa lambda mu nu xi pi rho "
+    "sigma tau upsilon phi varphi chi psi omega Gamma Delta Theta Lambda Xi Pi Sigma Upsilon Phi Psi Omega".split()
+)
+MATH_WORDS = GREEK | set("sqrt sin cos tan arctan log ln exp infty dagger".split())
+MATH_STYLE = set(
+    "mathrm rm text textrm mathit mathbf boldsymbol bm mathcal cal mathbb mathsf left right "
+    "tilde widetilde hat widehat bar overline vec".split()
+)
+MATH_SYMBOLS = {
+    "pm": "±", "prime": "'", "to": "->", "rightarrow": "->", "times": "x", "ell": "l",
+    "sim": "~", "simeq": "~", "approx": "~", "gtrsim": ">~", "lesssim": "<~",
+}  # fmt: skip
 SENTENCE_END = re.compile(r"(?<=[a-z0-9\)\]\}\$])\.\s+(?=[A-Z\\])|\n\s*\n|\\(?:sub)*section\*?\{[^}]*\}|\\item\b")
 
 
@@ -203,6 +220,35 @@ def target_keys(texts: list[str], target: dict, label: str | None, stats: Counte
     return keys
 
 
+def math_text(formula: str) -> str | None:
+    """A formula as plain text ($\\Xi _{c}(2930)^{0}$ -> Xi_c(2930)^0), None for an equation or unknown macro."""
+    body = formula.strip("$")
+    if body.startswith(("\\(", "\\[")):
+        body = body[2:-2]
+    if re.search(r"[=<>]", body):
+        return None
+    unknown = False
+
+    def word(m: re.Match) -> str:
+        nonlocal unknown
+        name = m.group(1)
+        if name in MATH_WORDS:
+            return f" {name} "
+        if name in MATH_STYLE:
+            return " "
+        if name in MATH_SYMBOLS:
+            return f" {MATH_SYMBOLS[name]} "
+        unknown = True
+        return " "
+
+    body = re.sub(r"\\[^a-zA-Z]|[{}~]", " ", body)  # spacing commands and braces
+    body = re.sub(r"\\([a-zA-Z]+)", word, body)
+    if unknown:
+        return None
+    body = re.sub(r"\s*([_^/(])\s*", r"\1", body.strip())  # "Xi _ c (2930)" -> "Xi_c(2930)"
+    return re.sub(r"\s+(?=\))|\s+(?=\s)", "", body)
+
+
 def clean(sentence: str) -> str:
     s = MATH.sub(" ", sentence)
     s = COMMANDS.sub(" ", s)
@@ -213,46 +259,66 @@ def clean(sentence: str) -> str:
     return s
 
 
-def contexts(texts: list[str], keys: set[str], target: dict, stats: Counter) -> list[tuple[str, str]]:
-    """(query, context) pairs: the sentence without the citation, and with [CITED] in its place."""
-    found = []
+def sentence_pair(raw: str, target: dict, stats: Counter) -> tuple[str, str] | None:
+    """(query, context) for the LaTeX sentence around one \\cite of the target, None when a filter drops it:
+    the sentence without the citation, and with [CITED] in its place."""
+    if len(CITE.findall(raw)) > 1:
+        stats["dropped: other citations in the sentence"] += 1
+        return None
+    formulas = MATH.findall(raw)
+    if len(formulas) > MAX_FORMULAS:
+        stats["dropped: more than two formulas"] += 1
+        return None
+    if any(math_text(f) is None for f in formulas):
+        stats["dropped: equation or unknown macro in a formula"] += 1
+        return None
+    raw = MATH.sub(lambda m: math_text(m.group(0)) or "", raw)
+    if MACRO.search(MARKUP.sub("", COMMANDS.sub("", CITE.sub("", raw)))):
+        stats["dropped: author's macro outside formulas"] += 1
+        return None
+    context = clean(CITE.sub(" [CITED] ", raw))
+    sentence = re.sub(r"\s+", " ", context.replace("[CITED]", " ")).strip(" ,;:")
+    words = re.findall(r"[a-z]+", sentence.lower())
     surnames = {a.lower() for a in target["authors"] if len(a) > 2}
+    if surnames & set(words) or "et al" in sentence.lower():
+        stats["dropped: names an author"] += 1
+        return None
+    if title_overlap(sentence, target["title"]):
+        stats["dropped: three title words"] += 1
+        return None
+    if len(_tokens(sentence)) < MIN_CONTENT_WORDS or len(sentence.split()) > MAX_WORDS:
+        stats["dropped: too short or too long"] += 1
+        return None
+    stats["kept"] += 1
+    return sentence, context
+
+
+def cited_sentences(texts: list[str]):
+    """(raw sentence, \\cite match) for every citation in the prose of a LaTeX source."""
     for text in texts:
         if "\\bibitem" in text and "\\begin{document}" not in text:
             continue  # a .bbl file: bibliography, no prose
         body = ENVS.sub(" ", COMMENT.sub("", text))
         bounds = [0, *(m.end() for m in SENTENCE_END.finditer(body)), len(body)]
         for match in CITE.finditer(body):
-            cited = [k.strip() for k in match.group(1).split(",")]
-            if not keys & set(cited):
-                continue
-            stats["cite of target"] += 1
-            if len(cited) > 1:
-                stats["dropped: several keys in the \\cite"] += 1
-                continue
             start = max(b for b in bounds if b <= match.start())
             end = min(b for b in bounds if b > match.start())
-            raw = body[start:end]
-            if len(CITE.findall(raw)) > 1:
-                stats["dropped: other citations in the sentence"] += 1
-                continue
-            if len(MATH.findall(raw)) > MAX_FORMULAS:
-                stats["dropped: more than two formulas"] += 1
-                continue
-            context = clean(CITE.sub(" [CITED] ", raw))
-            sentence = re.sub(r"\s+", " ", context.replace("[CITED]", " ")).strip(" ,;:")
-            words = re.findall(r"[a-z]+", sentence.lower())
-            if surnames & set(words) or "et al" in sentence.lower():
-                stats["dropped: names an author"] += 1
-                continue
-            if title_overlap(sentence, target["title"]):
-                stats["dropped: three title words"] += 1
-                continue
-            if len(_tokens(sentence)) < MIN_CONTENT_WORDS or len(sentence.split()) > MAX_WORDS:
-                stats["dropped: too short or too long"] += 1
-                continue
-            stats["kept"] += 1
-            found.append((sentence, context))
+            yield body[start:end], match
+
+
+def contexts(texts: list[str], keys: set[str], target: dict, stats: Counter) -> list[tuple[str, str]]:
+    """(query, context) pairs for the sentences that cite the target with one of its keys."""
+    found = []
+    for raw, match in cited_sentences(texts):
+        cited = [k.strip() for k in match.group(1).split(",")]
+        if not keys & set(cited):
+            continue
+        stats["cite of target"] += 1
+        if len(cited) > 1:
+            stats["dropped: several keys in the \\cite"] += 1
+            continue
+        if pair := sentence_pair(raw, target, stats):
+            found.append(pair)
     return found
 
 
