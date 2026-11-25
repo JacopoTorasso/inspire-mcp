@@ -86,6 +86,7 @@ async def judge(client: AsyncAnthropic, context: str, sem: asyncio.Semaphore) ->
 async def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--concurrency", type=int, default=4)
+    parser.add_argument("--out", type=Path, default=OUT)
     parser.add_argument("inputs", type=Path, nargs="*", default=[IN], help="batches of citation_contexts.py")
     args = parser.parse_args()
     rows = [json.loads(line) for f in args.inputs for line in f.read_text().splitlines() if line.strip()]
@@ -108,7 +109,7 @@ async def main() -> None:
         v = cache.get(key(r["context"]), {})
         if v.get("descriptive"):
             kept.append({**r, "judge_reason": v["reason"]})
-    OUT.write_text("".join(json.dumps(r, ensure_ascii=False) + "\n" for r in kept))
+    args.out.write_text("".join(json.dumps(r, ensure_ascii=False) + "\n" for r in kept))
     errors = sum("error" in v for v in results)
     refusals = sum(bool(v.get("refusal")) for v in results)
     print(f"sentences: {len(rows)}, judged now: {len(todo)}, errors: {errors}, refusals: {refusals}")
