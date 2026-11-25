@@ -23,6 +23,8 @@ Sentences come from arXiv papers under various licences, so only this script is 
 the downloaded sources stay in eval/cache/ (git-ignored).
 
     uv run python eval/citation_contexts.py --n 10 --per-target 3
+    uv run python eval/citation_contexts.py --n 500 --seed 2029 --out eval/cache/citation_contexts.b2.jsonl \\
+        --exclude-batch eval/cache/citation_contexts.jsonl
 """
 
 from __future__ import annotations
@@ -335,8 +337,13 @@ async def main() -> None:
     parser.add_argument("--n", type=int, default=10, help="number of target papers")
     parser.add_argument("--per-target", type=int, default=3, help="sentences kept per target, at most")
     parser.add_argument("--seed", type=int, default=2028)
+    parser.add_argument("--out", type=Path, default=OUT)
+    parser.add_argument(
+        "--exclude-batch", type=Path, action="append", default=[], help="earlier output whose targets are skipped"
+    )
     args = parser.parse_args()
-    excluded = {json.loads(line)["arxiv"] for f in EXCLUDE for line in (HERE / f).read_text().splitlines() if line}
+    files = [HERE / f for f in EXCLUDE] + args.exclude_batch
+    excluded = {json.loads(line)["arxiv"] for f in files for line in f.read_text().splitlines() if line}
     rng = random.Random(args.seed)
     stats: Counter = Counter()
     rows = []
@@ -377,12 +384,12 @@ async def main() -> None:
                     }
                 )
     CACHE.mkdir(exist_ok=True)
-    OUT.write_text("".join(json.dumps(r, ensure_ascii=False) + "\n" for r in rows))
+    args.out.write_text("".join(json.dumps(r, ensure_ascii=False) + "\n" for r in rows))
     for key, value in sorted(stats.items()):
         print(f"{key}: {value}")
     if rows:
         shares = sorted(r["abstract_share"] for r in rows)
-        print(f"sentences: {len(rows)} for {args.n} targets, written to {OUT.relative_to(HERE.parent)}")
+        print(f"sentences: {len(rows)} for {args.n} targets, written to {args.out}")
         print(f"share of words found in the target abstract: median {shares[len(shares) // 2]:.2f}")
 
 
