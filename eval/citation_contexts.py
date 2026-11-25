@@ -353,7 +353,6 @@ async def main() -> None:
     args = parser.parse_args()
     files = [HERE / f for f in EXCLUDE] + args.exclude_batch
     excluded = {json.loads(line)["arxiv"] for f in files for line in f.read_text().splitlines() if line}
-    rng = random.Random(args.seed)
     stats: Counter = Counter()
     rows = []
     last = [0.0]
@@ -362,7 +361,12 @@ async def main() -> None:
         httpx.AsyncClient(headers={"User-Agent": USER_AGENT}, timeout=60, follow_redirects=True) as http,
     ):
         targets = await sample_targets(client, args.n, args.seed, excluded)
-        for target in targets:
+        for n, target in enumerate(targets, 1):
+            # one generator per target: a citation added to INSPIRE between two runs changes the choice
+            # for that target only, and the others still find their sources in the cache
+            rng = random.Random(f"{args.seed}-{target['recid']}")
+            if n % 25 == 0:
+                print(f"target {n}/{len(targets)}, sentences so far: {len(rows)}", flush=True)
             kept: list[tuple[str, tuple[str, str]]] = []
             for citing, label in await citing_papers(client, target, args.per_target, rng):
                 if len(kept) >= args.per_target:
