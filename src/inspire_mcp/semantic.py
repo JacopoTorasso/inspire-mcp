@@ -19,7 +19,10 @@ and their vectors are cached on disk by record id.
 from __future__ import annotations
 
 import asyncio
+import functools
+import gzip
 import hashlib
+import json
 import math
 import os
 import re
@@ -56,6 +59,34 @@ def content_terms(question: str, max_terms: int = MAX_TERMS) -> list[str]:
             continue
         seen[low] = None
     return list(seen)[:max_terms]
+
+
+TERM_DF_PATH = Path(__file__).with_name("term_df.json.gz")
+
+
+def term_key(text: str) -> list[str]:
+    """Words as content_terms() normalizes them, for the document frequency table."""
+    return [tok.lower().strip("-") for tok in TOKEN.findall(text)]
+
+
+@functools.cache
+def _term_df() -> tuple[dict[str, int], int]:
+    try:
+        data = json.loads(gzip.decompress(TERM_DF_PATH.read_bytes()))
+    except OSError:  # pragma: no cover - the table ships with the package
+        return {}, 0
+    return data["df"], data["docs"]
+
+
+def specific_terms(question: str, n: int = MAX_TERMS) -> list[str]:
+    """The n content words that are rarest in physics abstracts, in question order. A long question, such as
+    a sentence copied from a paper, often starts with generic words that crowd the first MAX_TERMS."""
+    df, docs = _term_df()
+    if not docs:
+        return []
+    terms = content_terms(question, max_terms=10**6)
+    keep = set(sorted(terms, key=lambda t: df.get(t, 0))[:n])
+    return [t for t in terms if t in keep]
 
 
 def phrase_terms(question: str) -> list[str]:
@@ -289,8 +320,9 @@ async def candidates(
     """Candidate pool from the live INSPIRE index.
 
     Strict AND results first (high precision when they exist), then the relaxed OR query by INSPIRE
-    relevance. Strategy "multi" interleaves the OR results with quoted adjacent-word phrases and a
-    title-only OR query, three reformulations that miss different papers. With `influential`, that many
+    relevance, interleaved for long questions with the OR of their rarest words (specific_terms).
+    Strategy "multi" interleaves the OR results with quoted adjacent-word phrases and a title-only OR
+    query, three reformulations that miss different papers. With `influential`, that many
     candidates come from the relaxed query restricted to well cited papers, a prior for questions about
     foundational work that relevance ranking alone tends to bury.
     """
@@ -302,11 +334,18 @@ async def candidates(
             return 0, []
 
     relaxed = relaxed_query(question)
+    # A long question: also the OR of its rarest words, which the first MAX_TERMS may leave out.
+    rare_terms = specific_terms(question)
+    rare = " or ".join(_quote(t) for t in rare_terms) if set(rare_terms) != set(content_terms(question)) else ""
     # Independent queries: run them together, the client keeps to INSPIRE's rate limit.
-    (strict_total, strict), loose = await asyncio.gather(strict_search(), _search_or_empty(client, relaxed, pool))
+    (strict_total, strict), loose, loose_rare = await asyncio.gather(
+        strict_search(), _search_or_empty(client, relaxed, pool), _search_or_empty(client, rare, pool)
+    )
     if relaxed and not loose:
         relaxed = relaxed_query(question, quote_all=True)
         loose = await _search_or_empty(client, relaxed, pool)
+    if loose_rare:
+        loose = interleave(loose, loose_rare)
     if strategy == "multi":
         phrases = " or ".join(f'"{p}"' for p in phrase_terms(question))
         titles = " or ".join(f"t {_quote(t)}" for t in content_terms(question))
