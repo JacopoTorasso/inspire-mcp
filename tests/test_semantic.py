@@ -245,3 +245,32 @@ def test_cross_encoder_from_fastembed_local_directory_or_hub(tmp_path):
         ("someone/physics-reranker-onnx", None),
     ]
     assert FakeCrossEncoder.registered == ["local/physics-reranker", "someone/physics-reranker-onnx"]
+
+
+class CountingReranker:
+    name = "counting"
+    fuse_with_inspire = False
+    prefilter = 2
+
+    def __init__(self):
+        self.seen = []
+
+    def scores(self, query, docs):
+        self.seen.append([d.recid for d in docs])
+        return [float(d.recid) for d in docs]
+
+
+@respx.mock
+async def test_prefilter_scores_only_the_bm25_head_and_keeps_the_rest():
+    docs = [
+        {**ATLAS_HIGGS, "control_number": 1, "titles": [{"title": "Unrelated cosmology"}], "abstracts": []},
+        {**ATLAS_HIGGS, "control_number": 2},
+        {**ATLAS_HIGGS, "control_number": 3},
+    ]
+    respx.get(f"{BASE_URL}/literature").mock(return_value=httpx.Response(200, json=hits(*docs)))
+    reranker = CountingReranker()
+    async with InspireClient(min_interval=0, cache_ttl=0) as client:
+        result = await semantic_search(client, "higgs boson discovery", k=3, reranker=reranker)
+    assert sorted(reranker.seen[0]) == [2, 3]  # the paper with no matching word is not scored
+    assert [p.recid for p in result.papers] == [3, 2, 1]
+    assert set(result.scores) == {2, 3}

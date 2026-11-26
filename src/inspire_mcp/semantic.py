@@ -239,6 +239,9 @@ class CrossEncoderReranker:
     cached embeddings, but much better at telling apart abstracts on the same topic."""
 
     fuse_with_inspire = False
+    # Only the 25 candidates BM25 ranks highest are scored: half the latency, and no loss on any development
+    # set, citation-context questions included (eval/rerank_lab.py, "BM25 top 25 first").
+    prefilter = 25
 
     def __init__(self, model: str = DEFAULT_CROSS_ENCODER) -> None:
         try:
@@ -374,15 +377,24 @@ async def semantic_search(
     if fuse_with_inspire is None:
         fuse_with_inspire = getattr(reranker, "fuse_with_inspire", True)
     docs, relaxed, strict_total = await candidates(client, question, pool, influential=influential, strategy=strategy)
+    # A slow reranker reads only the candidates BM25 ranks highest: half the time, no measured loss.
+    # Not with `influential`: those candidates are there because lexical relevance buries them.
+    keep = 0 if influential else getattr(reranker, "prefilter", 0)
+    scored, rest = (docs, [])
+    if keep and len(docs) > keep:
+        bm25 = BM25Reranker().scores(question, docs)
+        ranked = [d for d, _ in sorted(zip(docs, bm25, strict=True), key=lambda x: -x[1])]
+        scored, rest = ranked[:keep], ranked[keep:]
     # Models are CPU-bound and synchronous: run them in a worker thread so the event loop keeps serving.
-    scores = await asyncio.to_thread(reranker.scores, question, docs) if docs else []
-    by_score = [d.recid for d, _ in sorted(zip(docs, scores, strict=True), key=lambda x: -x[1])]
+    scores = await asyncio.to_thread(reranker.scores, question, scored) if scored else []
+    by_score = [d.recid for d, _ in sorted(zip(scored, scores, strict=True), key=lambda x: -x[1])]
+    by_score += [d.recid for d in rest]  # after the reranked ones, in BM25 order
     inspire_order = [d.recid for d in docs]
     order = rrf(by_score, inspire_order) if fuse_with_inspire else by_score
     lookup = {d.recid: d for d in docs}
     return SemanticResult(
         papers=[lookup[r] for r in order[:k]],
-        scores={d.recid: round(s, 4) for d, s in zip(docs, scores, strict=True)},
+        scores={d.recid: round(s, 4) for d, s in zip(scored, scores, strict=True)},
         inspire_query=relaxed,
         pool_size=len(docs),
         strict_hits=strict_total,
