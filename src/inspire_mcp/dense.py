@@ -16,7 +16,7 @@ arXiv are indexed (arXiv metadata is CC0). Layout of an index directory:
                   836k x 384), and `recids` int64 INSPIRE record ids in the same order; one file, replaced
                   atomically, so a server starting during an update never reads half of it
 
-    inspire-mcp index build DIR            # every record, a few hours on a CPU
+    inspire-mcp index build DIR            # every record: ~15 h on an 8-core CPU (17 min on a GPU, train/)
     inspire-mcp index update DIR           # records since the newest date in the index
 """
 
