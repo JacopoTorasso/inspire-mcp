@@ -159,7 +159,10 @@ reads a citing sentence poorly even when the target is there (MRR 0.13 with the 
 misses specific ones. Adding the OR of the twelve rarest words (document frequencies over 125k training
 abstracts, shipped with the package) raises the share of citedev targets in the pool from 0.36 to 0.41,
 with no loss on famous (0.53 -> 0.55) or longtail (0.88 -> 0.90) (`eval/recall_lab.py`). AND queries of
-the rarest words, and pools of 100 candidates, did not help: the rerankers rank a larger pool worse.
+the rarest words, INSPIRE full-text search for them, and pools of 100 candidates did not help (the
+rerankers rank a larger pool worse). The rest of the gap needs either a semantic index of all of INSPIRE,
+which this project avoids hosting, or a reformulated question, which is what an assistant calling the
+tool provides (see the agentic baseline).
 
 **BM25 prefilter.** Scoring only the 25 candidates BM25 ranks highest halves the cross-encoder time with
 no loss on any development set, citation questions included, for the general and the fine-tuned models.
