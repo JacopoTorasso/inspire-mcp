@@ -174,6 +174,14 @@ INSPIRE pools the server would rerank, and Haiku's rankings of those pools disti
 (`teacher.py`, `finetune.py`). Results and the model choice: see the section below, written once the
 test set has been run.
 
+**Choice, fixed before the test sets were run (26/11/2026).** On the development sets, by mean MRR@10
+with the target inserted and with no set worse than the default on the real pools, the fine-tuned
+bge-reranker-base with distillation wins (0.524; real pools 0.424 against 0.396 for MiniLM-L6, better
+on all three sets), and the distilled MiniLM-L12 is the fast alternative (0.505; 0.421). Both are run
+once on the test sets (`citations`, then `heldout`), together with the default; the test results do not
+choose between them: the bge model becomes the default if a complete semantic_search stays within 3.5 s
+on a laptop CPU, the L12 model otherwise.
+
 ## Offline: fixed corpus of every INSPIRE record with 1500+ citations (1396 papers, famous set)
 
 | system | R@1 | R@10 | MRR@10 [95% CI] |
