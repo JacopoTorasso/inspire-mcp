@@ -2,6 +2,24 @@
 
 All notable changes. Versions follow [semantic versioning](https://semver.org).
 
+## Unreleased
+
+* Candidates: a long question (more than twelve content words, such as a sentence copied from a paper)
+  also queries INSPIRE with its twelve rarest words, from a 277 kB table of document frequencies shipped
+  with the package; on questions taken from citing papers the target reaches the pool 41% of the time
+  instead of 36%, with no loss on the other sets.
+* The cross-encoder scores only the 25 candidates BM25 ranks highest: about half the reranking time,
+  with no loss on any development set (not with `prefer_influential`, whose candidates are there
+  because lexical relevance buries them).
+* `--reranker-model` (`INSPIRE_MCP_RERANKER_MODEL`): any fastembed cross-encoder, a Hugging Face
+  repository with an ONNX export, or a local directory with one.
+* INSPIRE's rate limit is kept as a window of 14 requests per 5 s instead of a fixed spacing, and the
+  strict and relaxed candidate queries run together: candidates in 0.4 to 0.65 s instead of about 0.75 s.
+* Evaluation: questions taken from the sentences in which other papers cite the target, a frozen test
+  set of 86 and a development set of 64 (`eval/citation_contexts.py`, `judge_contexts.py`,
+  `freeze_citations.py`); candidate recall (`recall_lab.py`); Claude Haiku as a reference reranker
+  (`llm_rerank.py`). Training code for a physics cross-encoder in `train/`.
+
 ## 0.5.3
 
 * Network errors are retried with exponential backoff (1 s, 2 s, 4 s, at most 10 s) instead of
