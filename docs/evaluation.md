@@ -120,6 +120,57 @@ gain was noise, so the default stays MiniLM-L6, which is twice as fast. Two less
 * the held-out set is also the honest estimate of quality on unseen papers: 60% right first, lower
   than the 70% measured on the set the design choices were made on.
 
+## Citation-context questions: how a physicist describes a paper from memory
+
+The longtail and held-out questions were written from the abstract, which flatters a reranker that reads
+the abstract (see Limits). A citing author describes a paper in their own words, so the sentence in which
+another paper cites the target is a more realistic question, with a known answer.
+
+`eval/citation_contexts.py` samples targets from the longtail population, downloads the LaTeX source of
+papers citing them (no self-citations), and keeps the sentence around a `\cite` of the target when it
+cites nothing else, names no author of the target, repeats no three consecutive title words and has no
+equation; formulas become plain text as a user would type them (`$\Xi_c(2930)$` -> `Xi_c(2930)`).
+`eval/judge_contexts.py` then asks Claude Haiku, which sees the sentence only, never the abstract,
+whether it describes what the cited paper did specifically enough to pick it out; about one sentence in
+three passes. One sentence per target is kept, by a fixed rule (`eval/freeze_citations.py`). Only ids
+and hashes are versioned; the sentences stay in `eval/cache/`.
+
+* **citations** (test, frozen before any model ran on it): 86 questions, two batches of 300 and 500
+  sampled targets. Median share of a question's content words found in the target abstract: 0.27,
+  against 0.75 for the longtail questions.
+* **citedev** (development): 64 questions on other targets, same rules, for every choice below.
+
+On these questions the default pipeline is much weaker than the longtail numbers suggest:
+
+| development, 50 candidates | citedev MRR@10 | target in the pool |
+|---|---|---|
+| INSPIRE order of the OR query | 0.14 | 0.36 |
+| MiniLM-L6 cross-encoder (default up to 0.5.3) | 0.10 | 0.36 |
+| bge-reranker-base | 0.16 | 0.36 |
+| Claude Haiku reranking the same 50 (`eval/llm_rerank.py`), reference only | 0.21 | 0.36 |
+| the same, with the target inserted into every pool | 0.42 | 1 |
+
+Two things limit the result: the target is missing from the pool for two questions in three (half of
+them are not even in the first 250 results of the OR query), and a general web-search cross-encoder
+reads a citing sentence poorly even when the target is there (MRR 0.13 with the target inserted, against
+0.42 for Haiku).
+
+**Candidates.** A long question starts with generic words, and the OR of its first twelve content words
+misses specific ones. Adding the OR of the twelve rarest words (document frequencies over 125k training
+abstracts, shipped with the package) raises the share of citedev targets in the pool from 0.36 to 0.41,
+with no loss on famous (0.53 -> 0.55) or longtail (0.88 -> 0.90) (`eval/recall_lab.py`). AND queries of
+the rarest words, and pools of 100 candidates, did not help: the rerankers rank a larger pool worse.
+
+**BM25 prefilter.** Scoring only the 25 candidates BM25 ranks highest halves the cross-encoder time with
+no loss on any development set, citation questions included, for the general and the fine-tuned models.
+
+**Fine-tuning** (`train/`): 3000 training papers sampled from the same populations, none in any evaluation
+set; questions written by Haiku from the abstract and filtered by vocabulary overlap (`make_data.py`),
+real citation sentences from Semantic Scholar judged as above (`s2_contexts.py`), hard negatives from the
+INSPIRE pools the server would rerank, and Haiku's rankings of those pools distilled into the student
+(`teacher.py`, `finetune.py`). Results and the model choice: see the section below, written once the
+test set has been run.
+
 ## Offline: fixed corpus of every INSPIRE record with 1500+ citations (1396 papers, famous set)
 
 | system | R@1 | R@10 | MRR@10 [95% CI] |
