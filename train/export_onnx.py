@@ -30,7 +30,7 @@ PAIRS = [
 ]
 
 
-def export(src: Path, out: Path, int8: bool, optimize: bool) -> Path:
+def export(src: Path, out: Path, int8: str | None, optimize: bool) -> Path:
     tok = AutoTokenizer.from_pretrained(src)
     model = AutoModelForSequenceClassification.from_pretrained(src).eval()
     out.mkdir(parents=True, exist_ok=True)
@@ -65,14 +65,26 @@ def export(src: Path, out: Path, int8: bool, optimize: bool) -> Path:
         quantized = onnx_dir / "model_int8.onnx"
         # per channel and on the matrix products only: the default per-tensor scheme costs bge-reranker-base
         # several points of MRR on the development set
+        exclude = []
+        if int8 == "ffn":  # attention products stay in float: they move the ranking most
+            import onnx
+
+            exclude = [
+                n.name for n in onnx.load(str(path)).graph.node if n.op_type == "MatMul" and "attention" in n.name
+            ]
         quantize_dynamic(
-            str(path), str(quantized), weight_type=QuantType.QInt8, per_channel=True, op_types_to_quantize=["MatMul"]
+            str(path),
+            str(quantized),
+            weight_type=QuantType.QInt8,
+            per_channel=True,
+            op_types_to_quantize=["MatMul"],
+            nodes_to_exclude=exclude,
         )
         shutil.move(quantized, path)
     return path
 
 
-def check(src: Path, path: Path, int8: bool) -> None:
+def check(src: Path, path: Path, int8: str | None) -> None:
     tok = AutoTokenizer.from_pretrained(src)
     model = AutoModelForSequenceClassification.from_pretrained(src).eval()
     batch = tok([q for q, _ in PAIRS], [d for _, d in PAIRS], padding=True, truncation=True, return_tensors="pt")
@@ -99,7 +111,7 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("src", type=Path)
     parser.add_argument("out", type=Path)
-    parser.add_argument("--int8", action="store_true")
+    parser.add_argument("--int8", nargs="?", const="all", choices=["all", "ffn"], help="ffn: feed-forward only")
     parser.add_argument("--optimize", action="store_true", help="onnxruntime transformer graph optimizations")
     args = parser.parse_args()
     path = export(args.src, args.out, args.int8, args.optimize)
