@@ -218,13 +218,18 @@ def build_server(
                 half of the candidates then come from papers with 250+ citations. Leave false for recent
                 or niche work, which this would push out.
             compact: drop abstracts and author lists to save context.
+
+        The first results carry the full abstract, later ones an excerpt: get_paper has the rest.
         """
         reranker_ = await get_reranker()
         reload_if_updated()
         dense = dense_state.get("d")
         result = await _semantic(inspire, question, size, pool, reranker_, prefer_influential, dense)
         return {
-            "results": [{**p.to_dict(compact), "score": result.scores.get(p.recid)} for p in result.papers],
+            "results": [
+                {**_ranked_result(p, i, compact), "score": result.scores.get(p.recid)}
+                for i, p in enumerate(result.papers)
+            ],
             "retrieval": {
                 "inspire_query": result.inspire_query,
                 "strict_query_hits": result.strict_hits,
@@ -509,6 +514,26 @@ def make_reranker(kind: str = "auto", model: str | None = None) -> Reranker:
         return CrossEncoderReranker(model)  # a model asked for by name must load, not silently fall back
     factories = {"bm25": BM25Reranker, "dense": DenseReranker, "cross-encoder": CrossEncoderReranker}
     return factories[kind]() if kind in factories else default_reranker()
+
+
+FULL_ABSTRACTS = 3  # semantic_search results with the whole abstract; the agent reads these closely
+ABSTRACT_EXCERPT = 400  # characters of abstract for the later ones, enough to tell a near miss
+RANKED_DROP = ("keywords", "categories", "pdf_url")  # in get_paper; pdf_url follows from arxiv_id
+
+
+def _ranked_result(paper: Paper, rank: int, compact: bool) -> dict[str, Any]:
+    """A semantic_search result: most of its tokens are abstracts, read again on every later turn of the
+    agent, so only the top ones keep the whole text and fields get_paper also returns are left out."""
+    data = paper.to_dict(compact)
+    if compact:
+        return data
+    for key in RANKED_DROP:
+        data.pop(key, None)
+    abstract = data.get("abstract")
+    if rank >= FULL_ABSTRACTS and abstract and len(abstract) > ABSTRACT_EXCERPT:
+        cut = abstract.rfind(" ", 0, ABSTRACT_EXCERPT)
+        data["abstract"] = abstract[: cut if cut > 0 else ABSTRACT_EXCERPT] + " …"
+    return data
 
 
 def _paging(total: int, page: int, size: int) -> dict[str, Any]:
