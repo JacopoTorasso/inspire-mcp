@@ -156,16 +156,20 @@ reads a citing sentence poorly even when the target is there (MRR 0.13 with the 
 0.42 for Haiku).
 
 **Candidates.** A long question starts with generic words, and the OR of its first twelve content words
-misses specific ones. Adding the OR of the twelve rarest words (document frequencies over 125k training
-abstracts, shipped with the package) raises the share of citedev targets in the pool from 0.36 to 0.41,
-with no loss on famous (0.53 -> 0.55) or longtail (0.88 -> 0.90) (`eval/recall_lab.py`). AND queries of
-the rarest words, INSPIRE full-text search for them, and pools of 100 candidates did not help (the
-rerankers rank a larger pool worse). The rest of the gap needs either a semantic index of all of INSPIRE,
-which this project avoids hosting, or a reformulated question, which is what an assistant calling the
-tool provides (see the agentic baseline).
+can miss specific ones. Adding the OR of the twelve rarest words (document frequencies over 125k training
+abstracts) raised the share of citedev targets in the pool from 0.36 to 0.41, with no loss on famous or
+longtail (`eval/recall_lab.py`), but changed nothing on the test sets (citations 35/86 and heldout 34/40
+either way), so it was not kept. AND queries of the rarest words, INSPIRE full-text search for them,
+rarity measured on citing prose, and pools of 100 candidates did not help either (the rerankers rank a
+larger pool worse). The rest of the gap needs either a semantic index of all of INSPIRE, which this
+project avoids hosting, or a reformulated question, which is what an assistant calling the tool
+provides: a Claude Haiku agent with semantic_search reaches MRR 0.22 on citedev (0.20 without it, 0.13
+for a single call; `eval/agent_eval.py --sets citedev`).
 
 **BM25 prefilter.** Scoring only the 25 candidates BM25 ranks highest halves the cross-encoder time with
-no loss on any development set, citation questions included, for the general and the fine-tuned models.
+no loss on any development set, citation questions included, for the general and the fine-tuned models,
+and none on the test sets (MiniLM-L6: citations 0.18 and heldout 0.66 MRR@10 with or without it). It is
+now the default.
 
 **Fine-tuning** (`train/`): 3000 training papers sampled from the same populations, none in any evaluation
 set; questions written by Haiku from the abstract and filtered by vocabulary overlap (`make_data.py`),
@@ -181,6 +185,27 @@ on all three sets), and the distilled MiniLM-L12 is the fast alternative (0.505;
 once on the test sets (`citations`, then `heldout`), together with the default; the test results do not
 choose between them: the bge model becomes the default if a complete semantic_search stays within 3.5 s
 on a laptop CPU, the L12 model otherwise.
+
+### Test results: the fine-tuned models are not adopted
+
+Run once, on the frozen test sets, with the server's pipeline (50 candidates, BM25 prefilter, ONNX
+through fastembed; the bge model quantized to int8 in its feed-forward layers):
+
+| test, MRR@10 [95% CI] | citations (86) | heldout (40) |
+|---|---|---|
+| MiniLM-L6 (default) | 0.18 [0.11, 0.25] | 0.66 [0.53, 0.79] |
+| bge-reranker-base fine-tuned, distilled | 0.21 [0.13, 0.29], p = 0.38 | 0.58 [0.45, 0.71], p = 0.06 |
+| MiniLM-L12 fine-tuned, distilled | 0.16 [0.10, 0.23], p = 0.36 | 0.65 [0.51, 0.78], p = 0.86 |
+
+Neither model beats the default: the bge model gains a little on citation questions, not
+significantly, and loses on the held-out set; the L12 model is level on the held-out set and slightly
+worse on citations. The development gains (0.396 -> 0.424 on the real pools) did not carry over: many
+variants were compared on 164 development questions, and the best of them on those questions is also
+the one most favoured by chance. The default stays MiniLM-L6. What the work did establish: questions
+from citing sentences are much harder than the abstract-written ones (MRR 0.18 against 0.66), the main
+limit on them is the candidate pool, and an LLM reranker (Haiku) is far ahead of every cross-encoder
+when the target is in the pool (0.42 against 0.13 to 0.28 on citedev), so better training data, not a
+bigger cross-encoder, is where the next gain would come from.
 
 ## Offline: fixed corpus of every INSPIRE record with 1500+ citations (1396 papers, famous set)
 
@@ -233,6 +258,10 @@ on a laptop CPU, the L12 model otherwise.
 
 ## Next steps
 
-* A reranker fine-tuned on physics text: general web-search rerankers have plateaued here.
+* A reranker fine-tuned on physics text: tried (see the citation-context section), it beat the default
+  on the development sets but not on the test sets. A next attempt needs more real citation sentences
+  for training and a larger development set, so that choosing among variants does not fit noise.
+* Candidate recall on citation-like questions (a third to two fifths of the targets reach the pool):
+  no cheap query rewriting tried so far helps.
 * Questions from real usage logs, and a larger longtail set to narrow the intervals.
 * Physics-tuned rerankers compared on quality, latency and memory.

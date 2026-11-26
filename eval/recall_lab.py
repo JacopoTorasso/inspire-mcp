@@ -152,9 +152,14 @@ async def main() -> None:
     cdf, ctotal = citation_frequencies()
     both_df, _ = combined(df, total, cdf, ctotal)
     print(f"document frequencies over {total} training abstracts and {ctotal} training citation sentences")
+    import argparse
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--sets", default=",".join(SETS), help="the test sets only once, to confirm")
+    args = parser.parse_args()
     async with InspireClient() as client:
         search = Searcher(client)
-        for name in SETS:
+        for name in args.sets.split(","):
             queries = load_queries(name)
             await resolve_gold(client, queries)
             hits: dict[str, list[bool]] = {}
