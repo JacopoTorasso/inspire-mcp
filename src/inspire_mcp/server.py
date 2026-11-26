@@ -13,6 +13,7 @@ from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
 from datetime import date
 from functools import wraps
+from pathlib import Path
 from typing import Any, Literal, ParamSpec, TypeVar
 
 from mcp.server.mcpserver import MCPServer
@@ -32,6 +33,7 @@ from .community import (
     parse_job,
     parse_seminar,
 )
+from .dense import DenseIndex
 from .http import build_http_app, serve_http
 from .metrics import Metrics
 from .semantic import (
@@ -101,12 +103,15 @@ def build_server(
     metrics: Metrics | None = None,
     reranker_kind: str = "auto",
     reranker_model: str | None = None,
+    dense_index: Path | DenseIndex | None = None,
 ) -> MCPServer:
-    """Build the server. With `warmup`, the reranker model loads in the background at startup and
-    /readyz reports 503 until it is ready; otherwise it loads on the first semantic_search call."""
+    """Build the server. With `warmup`, the reranker model (and the dense index, if any) load in the
+    background at startup and /readyz reports 503 until they are ready; otherwise they load on the first
+    semantic_search call."""
     inspire = client or InspireClient()
     metrics = metrics or Metrics()
     state: dict[str, Reranker] = {}
+    dense_state: dict[str, DenseIndex] = {}
     load_lock = asyncio.Lock()
 
     async def get_reranker() -> Reranker:
@@ -119,6 +124,12 @@ def build_server(
                     else await asyncio.to_thread(make_reranker, reranker_kind, reranker_model)
                 )
                 await asyncio.to_thread(loaded.scores, "warm up", [_WARMUP_PAPER])
+                if isinstance(dense_index, Path):
+                    index = await asyncio.to_thread(DenseIndex, dense_index)
+                    dense_state["d"] = index
+                    log.info("dense index ready: %s, newest record %s", index.name, index.newest)
+                elif dense_index is not None:
+                    dense_state["d"] = dense_index
                 state["r"] = loaded
                 metrics.reranker, metrics.ready = loaded.name, True
                 log.info("reranker ready: %s", loaded.name)
@@ -174,13 +185,16 @@ def build_server(
                 or niche work, which this would push out.
             compact: drop abstracts and author lists to save context.
         """
-        result = await _semantic(inspire, question, size, pool, await get_reranker(), prefer_influential)
+        reranker_ = await get_reranker()
+        dense = dense_state.get("d")
+        result = await _semantic(inspire, question, size, pool, reranker_, prefer_influential, dense)
         return {
             "results": [{**p.to_dict(compact), "score": result.scores.get(p.recid)} for p in result.papers],
             "retrieval": {
                 "inspire_query": result.inspire_query,
                 "strict_query_hits": result.strict_hits,
                 "candidates_reranked": result.pool_size,
+                "dense_index": dense.name if dense else None,
                 "reranker": result.reranker,
                 "fusion": result.fusion,
             },
@@ -433,17 +447,25 @@ def build_server(
 
 
 async def _semantic(
-    inspire: InspireClient, question: str, size: int, pool: int, reranker: Reranker, prefer_influential: bool
+    inspire: InspireClient,
+    question: str,
+    size: int,
+    pool: int,
+    reranker: Reranker,
+    prefer_influential: bool,
+    dense: DenseIndex | None = None,
 ) -> SemanticResult:
     k, pool = _clamp(size, 1, 25), _clamp(pool, 10, 100)
     influential = pool // 2 if prefer_influential else 0
     try:
-        return await semantic_search(inspire, question, k=k, pool=pool, reranker=reranker, influential=influential)
+        return await semantic_search(
+            inspire, question, k=k, pool=pool, reranker=reranker, influential=influential, dense=dense
+        )
     except RuntimeError:
         # e.g. the model failed at inference time: degrade to lexical reranking instead of failing the call
         log.warning("semantic reranker failed, falling back to BM25")
         return await semantic_search(
-            inspire, question, k=k, pool=pool, reranker=BM25Reranker(), influential=influential
+            inspire, question, k=k, pool=pool, reranker=BM25Reranker(), influential=influential, dense=dense
         )
 
 
@@ -484,8 +506,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     """Every option can also be set with an INSPIRE_MCP_<NAME> environment variable."""
     parser = argparse.ArgumentParser(
         description="INSPIRE-HEP MCP server",
-        epilog="Environment: INSPIRE_MCP_TRANSPORT, _HOST, _PORT (or PORT), _RERANKER, _RERANKER_MODEL, _CACHE_TTL, "
-        "_MIN_INTERVAL, _ALLOWED_HOSTS, _RATE_LIMIT, _TRUST_PROXY, _LOG_FORMAT, _LOG_LEVEL, "
+        epilog="Environment: INSPIRE_MCP_TRANSPORT, _HOST, _PORT (or PORT), _RERANKER, _RERANKER_MODEL, "
+        "_DENSE_INDEX, _CACHE_TTL, _MIN_INTERVAL, _ALLOWED_HOSTS, _RATE_LIMIT, _TRUST_PROXY, _LOG_FORMAT, _LOG_LEVEL, "
         "_CACHE (embedding cache directory).",
     )
     parser.add_argument("--transport", choices=["stdio", "streamable-http"], default=_env("TRANSPORT", "stdio"))
@@ -496,6 +518,13 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         choices=["auto", "bm25", "dense", "cross-encoder"],
         default=_env("RERANKER", "auto"),
         help="semantic_search reranker: auto = cross-encoder if the 'semantic' extra is installed, else bm25",
+    )
+    parser.add_argument(
+        "--dense-index",
+        type=Path,
+        default=Path(p) if (p := _env("DENSE_INDEX", "")) else None,
+        help="directory of a local semantic index (inspire-mcp index build): half of the candidates then come "
+        "from it. Needs about 1.3 GB of memory for all of INSPIRE",
     )
     parser.add_argument(
         "--reranker-model",
@@ -555,7 +584,11 @@ def main(argv: list[str] | None = None) -> None:
     logging.getLogger("httpx").setLevel(logging.WARNING)
     client = InspireClient(min_interval=args.min_interval, cache_ttl=args.cache_ttl)
     server = build_server(
-        client, reranker_kind=args.reranker, reranker_model=args.reranker_model, warmup=args.transport != "stdio"
+        client,
+        reranker_kind=args.reranker,
+        reranker_model=args.reranker_model,
+        dense_index=args.dense_index,
+        warmup=args.transport != "stdio",
     )
     if args.transport == "stdio":
         server.run("stdio")

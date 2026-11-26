@@ -2,7 +2,9 @@
 
 Each record is encoded as `title. abstract` (cut at 1200 characters, like the reranker's input) with a
 sentence-transformers model that fastembed also ships, so a service could encode queries on CPU with the
-same model. Output: train/cache/index-<model>/{vectors.npy (float16, normalized), recids.npy}.
+same model. Output: train/cache/index-<model>/ in the layout of inspire_mcp.dense (vectors.npy float16 and
+normalized, recids.npy, index.json), usable as the server's --dense-index; `inspire-mcp index update` then
+adds newer records on CPU.
 
     .venv-train/bin/python train/dense_index.py BAAI/bge-small-en-v1.5
 """
@@ -12,6 +14,7 @@ from __future__ import annotations
 import json
 import sys
 import time
+from datetime import date
 from pathlib import Path
 
 import numpy as np
@@ -45,6 +48,9 @@ def main() -> None:
     out.mkdir(parents=True, exist_ok=True)
     np.save(out / "vectors.npy", vectors.astype(np.float16))
     np.save(out / "recids.npy", np.array(recids, dtype=np.int64))
+    prefix = "Represent this sentence for searching relevant passages: " if model_name.startswith("BAAI/bge") else ""
+    meta = {"model": model_name, "query_prefix": prefix, "records": len(recids), "newest": date.today().isoformat()}
+    (out / "index.json").write_text(json.dumps(meta, indent=1))
     print(f"{len(recids)} records, dim {vectors.shape[1]}, {time.perf_counter() - start:.0f}s, in {out}")
 
 

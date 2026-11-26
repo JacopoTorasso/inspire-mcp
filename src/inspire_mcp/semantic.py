@@ -29,9 +29,12 @@ from collections import Counter
 from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Literal, Protocol
+from typing import TYPE_CHECKING, Any, Literal, Protocol
 
 from .client import InspireClient, InspireError, Paper
+
+if TYPE_CHECKING:
+    from .dense import DenseIndex
 
 STOPWORDS = frozenset(
     """a about after all also an and any are as at be been by can could did do does for from
@@ -288,6 +291,7 @@ async def candidates(
     influential: int = 0,
     min_citations: int = 250,
     strategy: Strategy = "or",
+    dense: DenseIndex | None = None,
 ) -> tuple[list[Paper], str, int]:
     """Candidate pool from the live INSPIRE index.
 
@@ -295,7 +299,9 @@ async def candidates(
     relevance. Strategy "multi" interleaves the OR results with quoted adjacent-word phrases and a
     title-only OR query, three reformulations that miss different papers. With `influential`, that many
     candidates come from the relaxed query restricted to well cited papers, a prior for questions about
-    foundational work that relevance ranking alone tends to bury.
+    foundational work that relevance ranking alone tends to bury. With a `dense` index (a service option,
+    see dense.py), half of the pool comes from the records nearest to the question by meaning, interleaved
+    with INSPIRE's; their metadata is fetched live in one more request.
     """
 
     async def strict_search() -> tuple[int, list[Paper]]:
@@ -305,6 +311,7 @@ async def candidates(
             return 0, []
 
     relaxed = relaxed_query(question)
+    nearest = asyncio.create_task(asyncio.to_thread(dense.search, question, pool)) if dense else None
     # Independent queries: run them together, the client keeps to INSPIRE's rate limit.
     (strict_total, strict), loose = await asyncio.gather(strict_search(), _search_or_empty(client, relaxed, pool))
     if relaxed and not loose:
@@ -321,7 +328,20 @@ async def candidates(
     merged: dict[int, Paper] = {}
     for p in [*strict, *loose[:head], *cited, *loose[head:]]:
         merged.setdefault(p.recid, p)
-    return list(merged.values())[:pool], relaxed, strict_total
+    found = list(merged.values())
+    if nearest is not None:
+        found = interleave(found[: pool // 2], await _records(client, await nearest, merged))
+    return found[:pool], relaxed, strict_total
+
+
+async def _records(client: InspireClient, recids: list[int], known: dict[int, Paper]) -> list[Paper]:
+    """Papers for record ids, in that order: the ones not already known fetched from INSPIRE in one request."""
+    missing = [r for r in recids if r not in known]
+    fetched: dict[int, Paper] = {}
+    if missing:
+        query = " or ".join(f"recid:{r}" for r in missing)
+        fetched = {p.recid: p for p in await _search_or_empty(client, query, len(missing))}
+    return [p for r in recids if (p := known.get(r) or fetched.get(r))]
 
 
 async def semantic_search(
@@ -333,11 +353,14 @@ async def semantic_search(
     fuse_with_inspire: bool | None = None,
     influential: int = 0,
     strategy: Strategy = "or",
+    dense: DenseIndex | None = None,
 ) -> SemanticResult:
     reranker = reranker or BM25Reranker()
     if fuse_with_inspire is None:
         fuse_with_inspire = getattr(reranker, "fuse_with_inspire", True)
-    docs, relaxed, strict_total = await candidates(client, question, pool, influential=influential, strategy=strategy)
+    docs, relaxed, strict_total = await candidates(
+        client, question, pool, influential=influential, strategy=strategy, dense=dense
+    )
     # A slow reranker reads only the candidates BM25 ranks highest: half the time, no measured loss.
     # Not with `influential`: those candidates are there because lexical relevance buries them.
     keep = 0 if influential else getattr(reranker, "prefilter", 0)

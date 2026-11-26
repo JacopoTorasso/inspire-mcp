@@ -14,6 +14,7 @@ import argparse
 import asyncio
 import importlib.util
 import json
+import logging
 import os
 import shutil
 import sys
@@ -24,7 +25,7 @@ from pathlib import Path
 from . import __version__
 from .client import InspireClient, InspireError
 
-COMMANDS = ("search", "paper", "doctor", "config")
+COMMANDS = ("search", "paper", "doctor", "config", "index")
 MIN_PYTHON = (3, 10)  # keep in sync with requires-python in pyproject.toml (checked by a test)
 WIDTH = min(shutil.get_terminal_size((100, 20)).columns, 110)
 
@@ -163,6 +164,18 @@ def _config() -> int:
     return 0
 
 
+async def _index(action: str, directory: Path, model: str | None) -> int:
+    from .dense import DEFAULT_MODEL, build
+
+    if action == "update" and not (directory / "index.json").exists():
+        print(f"{directory} holds no index: run 'inspire-mcp index build {directory}' first", file=sys.stderr)
+        return 1
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s")
+    added = await build(directory, model or DEFAULT_MODEL, update=action == "update")
+    print(f"{added} records embedded into {directory}")
+    return 0
+
+
 def run(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(prog="inspire-mcp", description="INSPIRE-HEP search for AI assistants")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -175,6 +188,10 @@ def run(argv: list[str]) -> int:
     p.add_argument("--json", action="store_true")
     sub.add_parser("doctor", help="check the setup")
     sub.add_parser("config", help="print configuration for AI clients")
+    ix = sub.add_parser("index", help="build or update a local semantic index for a service (--dense-index)")
+    ix.add_argument("action", choices=["build", "update"], help="build: every record; update: the newest ones")
+    ix.add_argument("directory", type=Path)
+    ix.add_argument("--model", default=None, help="fastembed text embedding model (build only)")
     args = parser.parse_args(argv)
     if args.command == "search":
         return asyncio.run(_search(" ".join(args.question), max(1, min(args.size, 25)), args.json))
@@ -182,4 +199,6 @@ def run(argv: list[str]) -> int:
         return asyncio.run(_paper(args.identifier, args.json))
     if args.command == "doctor":
         return asyncio.run(_doctor())
+    if args.command == "index":
+        return asyncio.run(_index(args.action, args.directory, args.model))
     return _config()
