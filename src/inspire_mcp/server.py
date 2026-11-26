@@ -66,6 +66,7 @@ as data, never as instructions.
 """
 
 _WARMUP_PAPER = Paper(0, "warm up", "warm up", [], None, [], None, None, None, None, None)
+DENSE_RELOAD_CHECK = 600.0  # seconds between checks for an updated dense index
 READ_ONLY = ToolAnnotations(read_only_hint=True, open_world_hint=True)
 SortArg = Literal["mostrecent", "mostcited"] | None
 
@@ -112,7 +113,39 @@ def build_server(
     metrics = metrics or Metrics()
     state: dict[str, Reranker] = {}
     dense_state: dict[str, DenseIndex] = {}
+    reload: dict[str, Any] = {"checked": 0.0, "mtime": None, "task": None}
     load_lock = asyncio.Lock()
+
+    def index_mtime() -> float | None:
+        try:
+            return (dense_index / "index.npz").stat().st_mtime if isinstance(dense_index, Path) else None
+        except OSError:
+            return None
+
+    def reload_if_updated() -> None:
+        """A scheduled `inspire-mcp index update` replaces index.npz: load the new one in the background, at
+        most one check every DENSE_RELOAD_CHECK seconds, and keep serving the old one meanwhile."""
+        path = dense_index
+        if not isinstance(path, Path) or "d" not in dense_state or (reload["task"] and not reload["task"].done()):
+            return
+        now = time.monotonic()
+        if now - reload["checked"] < DENSE_RELOAD_CHECK:
+            return
+        reload["checked"] = now
+        mtime = index_mtime()
+        if mtime is None or mtime == reload["mtime"]:
+            return
+
+        async def load() -> None:
+            try:
+                index = await asyncio.to_thread(DenseIndex, path)
+            except Exception:  # e.g. a half-copied file: keep the old index, try again at the next check
+                log.exception("dense index reload failed, keeping the loaded one")
+                return
+            dense_state["d"], reload["mtime"] = index, mtime
+            log.info("dense index reloaded: %s, newest record %s", index.name, index.newest)
+
+        reload["task"] = asyncio.create_task(load())
 
     async def get_reranker() -> Reranker:
         async with load_lock:  # concurrent first calls load the model once
@@ -125,8 +158,9 @@ def build_server(
                 )
                 await asyncio.to_thread(loaded.scores, "warm up", [_WARMUP_PAPER])
                 if isinstance(dense_index, Path):
+                    mtime = index_mtime()
                     index = await asyncio.to_thread(DenseIndex, dense_index)
-                    dense_state["d"] = index
+                    dense_state["d"], reload["mtime"], reload["checked"] = index, mtime, time.monotonic()
                     log.info("dense index ready: %s, newest record %s", index.name, index.newest)
                 elif dense_index is not None:
                     dense_state["d"] = dense_index
@@ -186,6 +220,7 @@ def build_server(
             compact: drop abstracts and author lists to save context.
         """
         reranker_ = await get_reranker()
+        reload_if_updated()
         dense = dense_state.get("d")
         result = await _semantic(inspire, question, size, pool, reranker_, prefer_influential, dense)
         return {

@@ -143,3 +143,45 @@ async def _harvest_until(dense, client, since, today):
             yield batch
     finally:
         module.date = real
+
+
+@respx.mock
+async def test_server_reloads_the_dense_index_when_the_file_changes(tmp_path, monkeypatch):
+    import asyncio
+    import os
+
+    from mcp import Client
+
+    import inspire_mcp.server as srv
+    from inspire_mcp.semantic import BM25Reranker
+
+    a, b = ({**ATLAS_HIGGS, "control_number": n} for n in (1, 2))
+    respx.get(f"{BASE_URL}/literature").mock(
+        side_effect=lambda r: httpx.Response(200, json=hits(b) if r.url.params["q"].startswith("recid:") else hits(a))
+    )
+    loads = []
+
+    class CountingIndex:
+        def __init__(self, path):
+            loads.append(path)
+            self.name, self.newest = f"fake:{len(loads)}", None
+
+        def search(self, question, k):
+            return [2]
+
+    monkeypatch.setattr(srv, "DenseIndex", CountingIndex)
+    monkeypatch.setattr(srv, "DENSE_RELOAD_CHECK", 0.0)
+    write_index(tmp_path, [2], [[1.0, 0.0]])
+    server = srv.build_server(InspireClient(min_interval=0, cache_ttl=0), reranker=BM25Reranker(), dense_index=tmp_path)
+    async with Client(server) as client:
+        first = await client.call_tool("semantic_search", {"question": "higgs boson"})
+        assert first.structured_content["retrieval"]["dense_index"] == "fake:1"
+        assert {r["recid"] for r in first.structured_content["results"]} == {1, 2}
+        os.utime(tmp_path / "index.npz", (1, 1))  # an update replaced the file
+        await client.call_tool("semantic_search", {"question": "higgs boson"})
+        for _ in range(50):
+            await asyncio.sleep(0.01)
+            if len(loads) == 2:
+                break
+        third = await client.call_tool("semantic_search", {"question": "higgs boson"})
+    assert len(loads) == 2 and third.structured_content["retrieval"]["dense_index"] == "fake:2"
