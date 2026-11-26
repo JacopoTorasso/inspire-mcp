@@ -36,7 +36,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 sys.path.insert(0, str(Path(__file__).parent))
 from run_eval import (  # noqa: E402
     HELDOUT_SETS,
-    QUERY_SETS,
     bootstrap_ci,
     load_queries,
     paired_permutation_p,
@@ -260,12 +259,13 @@ async def main() -> None:
     parser.add_argument("--model", required=True, choices=sorted(PRICES))
     parser.add_argument("--limit", type=int, default=0, help="questions per set (0 = all); a pilot samples evenly")
     parser.add_argument("--concurrency", type=int, default=4)
-    parser.add_argument("--sets", choices=["dev", "heldout"], default="dev")
+    parser.add_argument("--sets", choices=["dev", "heldout", "citedev"], default="dev")
+    parser.add_argument("--reranker-model", default=None, help="cross-encoder for semantic_search (default MiniLM-L6)")
     args = parser.parse_args()
 
     client = AsyncAnthropic(api_key=load_key(), max_retries=3)
-    reranker = await asyncio.to_thread(CrossEncoderReranker)
-    names = list(QUERY_SETS) if args.sets == "dev" else list(HELDOUT_SETS)
+    reranker = await asyncio.to_thread(CrossEncoderReranker, *([args.reranker_model] if args.reranker_model else []))
+    names = {"dev": ["famous", "longtail"], "heldout": list(HELDOUT_SETS), "citedev": ["citedev"]}[args.sets]
     sets = {name: load_queries(name) for name in names}
     if args.limit:
         rng = random.Random(SEED)
@@ -363,7 +363,9 @@ async def main() -> None:
     total = sum(o["cost_usd"] for o in runs.values())
     report["total_cost_usd"] = round(total, 4)
     RESULTS.mkdir(exist_ok=True)
-    tag = (f"-pilot{args.limit}" if args.limit else "") + ("-heldout" if args.sets == "heldout" else "")
+    tag = (f"-pilot{args.limit}" if args.limit else "") + (f"-{args.sets}" if args.sets != "dev" else "")
+    if args.reranker_model:
+        tag += "-" + Path(args.reranker_model.rstrip("/")).name
     out = RESULTS / f"agent-{args.model}-{report['date']}{tag}.json"
     out.write_text(json.dumps(report, indent=2, ensure_ascii=False))
     for name, block in report["sets"].items():
