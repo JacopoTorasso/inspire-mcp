@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import contextlib
 import json
 import os
 import random
@@ -46,6 +47,7 @@ from run_eval import (  # noqa: E402
 
 from inspire_mcp.client import InspireClient, InspireError  # noqa: E402
 from inspire_mcp.semantic import CrossEncoderReranker, semantic_search  # noqa: E402
+from inspire_mcp.server import INSTRUCTIONS  # noqa: E402
 
 HERE = Path(__file__).parent
 RESULTS = HERE / "results"
@@ -171,8 +173,38 @@ class Tools:
         return f"error: unknown tool {name}", True
 
 
-async def run_question(client: AsyncAnthropic, model: str, tools: Tools, arm: str, question: str) -> dict[str, Any]:
-    tool_defs = [SEARCH_TOOL, SUBMIT_TOOL] if arm == "A" else [SEMANTIC_TOOL, SEARCH_TOOL, SUBMIT_TOOL]
+TASK = """The user describes one specific paper. Find it with the tools, then call submit_ranking with the
+INSPIRE record ids (recid) of your best candidates, most likely first, at most 10. Always finish by calling
+submit_ranking, even if you are unsure; never answer in plain text instead."""
+
+
+class MCPTools:
+    """The real server, in process: its tool list, descriptions and instructions, and its results as an MCP
+    client receives them, so that what is measured is what a client such as Claude Desktop gets."""
+
+    def __init__(self, session: Any, tools: list[Any], instructions: str | None) -> None:
+        self.session = session
+        self.defs = [
+            {"name": t.name, "description": t.description or "", "input_schema": t.input_schema} for t in tools
+        ]
+        self.system = TASK + ("\n\nInstructions of the INSPIRE tools:\n" + instructions if instructions else "")
+
+    def definitions(self, arm: str) -> list[dict[str, Any]]:
+        defs = [d for d in self.defs if arm == "B" or d["name"] not in ("semantic_search", "find_similar_papers")]
+        return [*defs, SUBMIT_TOOL]
+
+    async def run(self, name: str, args: dict[str, Any]) -> tuple[str, bool]:
+        result = await self.session.call_tool(name, args)
+        text = "\n".join(c.text for c in result.content if getattr(c, "text", None))
+        return text, bool(getattr(result, "is_error", False))
+
+
+async def run_question(client: AsyncAnthropic, model: str, tools: Any, arm: str, question: str) -> dict[str, Any]:
+    if isinstance(tools, MCPTools):
+        tool_defs, system = tools.definitions(arm), tools.system
+    else:
+        tool_defs = [SEARCH_TOOL, SUBMIT_TOOL] if arm == "A" else [SEMANTIC_TOOL, SEARCH_TOOL, SUBMIT_TOOL]
+        system = SYSTEM
     messages: list[dict[str, Any]] = [{"role": "user", "content": question}]
     usage = {"input": 0, "output": 0, "cache_read": 0, "cache_write": 0}
     calls: list[dict[str, Any]] = []
@@ -184,7 +216,7 @@ async def run_question(client: AsyncAnthropic, model: str, tools: Tools, arm: st
                 response = await client.messages.create(
                     model=model,
                     max_tokens=16000,
-                    system=SYSTEM,
+                    system=system,
                     tools=tool_defs,
                     messages=messages,
                     output_config={"effort": "medium"},
@@ -263,6 +295,7 @@ async def main() -> None:
     parser.add_argument("--arms", default="AB", help="A (search only), B (with semantic_search) or AB")
     parser.add_argument("--dense-index", type=Path, default=None, help="semantic_search with this dense index")
     parser.add_argument("--repeat", type=int, default=1, help="tag of a repeated run (agent runs vary)")
+    parser.add_argument("--mcp", action="store_true", help="the agent uses the real server's tools and instructions")
     args = parser.parse_args()
 
     client = AsyncAnthropic(api_key=load_key(), max_retries=3)
@@ -285,11 +318,24 @@ async def main() -> None:
 
         dense = await asyncio.to_thread(DenseIndex, args.dense_index) if args.dense_index else None
         tools = Tools(inspire, reranker, args.semantic_k, dense)
+        stack = contextlib.AsyncExitStack()
+        agent_tools: Any = tools
+        if args.mcp:
+            from mcp import Client
+
+            from inspire_mcp.server import build_server
+
+            session = await stack.enter_async_context(
+                Client(build_server(inspire, reranker=reranker, dense_index=dense))
+            )
+            init = session.initialize_result if hasattr(session, "initialize_result") else None
+            instructions = getattr(init, "instructions", None) or INSTRUCTIONS
+            agent_tools = MCPTools(session, (await session.list_tools()).tools, instructions)
 
         async def one(q: dict[str, Any], arm: str) -> tuple[str, str, dict[str, Any]]:
             async with sem:
                 try:
-                    out = await run_question(client, args.model, tools, arm, q["query"])
+                    out = await run_question(client, args.model, agent_tools, arm, q["query"])
                 except BadRequestError as exc:
                     out = {
                         "ranking": [],
@@ -308,6 +354,7 @@ async def main() -> None:
 
         jobs = [one(q, arm) for qs in sets.values() for q in qs for arm in args.arms]
         done = await asyncio.gather(*jobs)
+        await stack.aclose()
         # measured now, with the current pipeline, so that every row of the report shares the same code
         baseline = {name: await measure_single_call(tools, qs) for name, qs in sets.items()}
 
@@ -382,6 +429,8 @@ async def main() -> None:
         tag += f"-{args.arms}"
     if args.dense_index:
         tag += "-dense"
+    if args.mcp:
+        tag += "-mcp"
     if args.repeat > 1:
         tag += f"-r{args.repeat}"
     out = RESULTS / f"agent-{args.model}-{report['date']}{tag}.json"
