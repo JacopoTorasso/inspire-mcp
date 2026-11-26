@@ -53,12 +53,8 @@ R = TypeVar("R")
 
 INSTRUCTIONS = """\
 Tools over INSPIRE-HEP, the literature database of high energy physics.
-For natural-language questions ("the paper that proposed ...") use semantic_search first: its results
-are already ranked by how well each title and abstract matches. If one of them fits the description,
-answer with it; there is no need to confirm it with search_literature. If none fits, call
-semantic_search again with a reworded, more specific question before switching tools.
-For precise requests (author, collaboration, title words, identifiers, dates) use search_literature
-with INSPIRE syntax:
+For natural-language questions ("the paper that proposed ...") use semantic_search.
+For precise requests use search_literature with INSPIRE syntax:
   t <words>        title words          a <name> / a E.Witten.1   author (name or INSPIRE BAI)
   cn <name>        collaboration        j <journal>               journal
   date > 2020      date filter          topcite 500+              citation count
@@ -213,7 +209,6 @@ def build_server(
 
         Retrieves up to `pool` candidates from INSPIRE with a relaxed query and reranks them by how well
         each title and abstract answers the question (cross-encoder when installed, else embeddings or BM25).
-        Results come best first: when one fits, use it directly; when none does, reword the question.
 
         Args:
             question: the question in plain English.
