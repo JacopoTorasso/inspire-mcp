@@ -257,7 +257,7 @@ async def main() -> None:
     parser.add_argument("--model", required=True, choices=sorted(PRICES))
     parser.add_argument("--limit", type=int, default=0, help="questions per set (0 = all); a pilot samples evenly")
     parser.add_argument("--concurrency", type=int, default=4)
-    parser.add_argument("--sets", choices=["dev", "heldout", "citedev"], default="dev")
+    parser.add_argument("--sets", choices=["dev", "heldout", "citedev", "citations2"], default="dev")
     parser.add_argument("--reranker-model", default=None, help="cross-encoder for semantic_search (default MiniLM-L6)")
     parser.add_argument("--semantic-k", type=int, default=10, help="candidates semantic_search shows the agent")
     parser.add_argument("--arms", default="AB", help="A (search only), B (with semantic_search) or AB")
@@ -267,7 +267,12 @@ async def main() -> None:
 
     client = AsyncAnthropic(api_key=load_key(), max_retries=3)
     reranker = await asyncio.to_thread(CrossEncoderReranker, *([args.reranker_model] if args.reranker_model else []))
-    names = {"dev": ["famous", "longtail"], "heldout": list(HELDOUT_SETS), "citedev": ["citedev"]}[args.sets]
+    names = {
+        "dev": ["famous", "longtail"],
+        "heldout": list(HELDOUT_SETS),
+        "citedev": ["citedev"],
+        "citations2": ["citations2"],
+    }[args.sets]
     sets = {name: load_queries(name) for name in names}
     if args.limit:
         rng = random.Random(SEED)

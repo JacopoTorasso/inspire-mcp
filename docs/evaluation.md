@@ -207,6 +207,24 @@ limit on them is the candidate pool, and an LLM reranker (Haiku) is far ahead of
 when the target is in the pool (0.42 against 0.13 to 0.28 on citedev), so better training data, not a
 bigger cross-encoder, is where the next gain would come from.
 
+## Dense index (service option): development results and the test fixed in advance
+
+`inspire-mcp index build DIR` embeds the 836k INSPIRE records with an arXiv abstract (bge-small, fastembed);
+with `--dense-index DIR` half of semantic_search's candidates come from the records nearest to the question
+by meaning, half from INSPIRE. On the development sets, with the questions an assistant actually passes to
+the tool (`eval/agent_queries.py`: Claude rewrites every description, in about 12 words), the share of
+targets among the 50 candidates rose from 0.39 to 0.50 (citedev), 0.61 to 0.82 (famous) and 0.93 to 0.97
+(longtail). The cross-encoder turns little of it into a better first place, but the assistant does: the
+final ranking of a Claude Haiku agent improved from MRR 0.252 to 0.315 on citedev (p = 0.06) and from
+0.815 to 0.864 on longtail (p = 0.02), averaged over two or three runs per configuration (agent runs vary
+by about 0.05); famous papers were already found (0.99).
+
+**Test, fixed before it was built (26/11/2026).** The citation test set has been used, so a fresh one is
+drawn with the same pipeline (`citations2`: seed 2031, 500 sampled targets, none in any earlier batch,
+development set or training set). It is frozen before any run, then the Haiku agent runs twice with and
+twice without the index. The index is reported as an improvement if the per-question MRR averaged over
+the runs is higher with it, with a paired permutation p < 0.05; otherwise it is reported as not confirmed.
+
 ## Offline: fixed corpus of every INSPIRE record with 1500+ citations (1396 papers, famous set)
 
 | system | R@1 | R@10 | MRR@10 [95% CI] |

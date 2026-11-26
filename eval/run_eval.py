@@ -57,7 +57,11 @@ QUERY_SETS = {
 }
 # Held out: used once, to confirm a choice made on the sets above (see eval/README.md).
 # citations: sentences of citing papers, frozen by freeze_citations.py; the text stays in eval/cache.
-HELDOUT_SETS = {"heldout": "queries_heldout.jsonl", "citations": "queries_citations.jsonl"}
+HELDOUT_SETS = {
+    "heldout": "queries_heldout.jsonl",
+    "citations": "queries_citations.jsonl",
+    "citations2": "queries_citations2.jsonl",  # fresh test set for the dense index (the first one was used)
+}
 CORPUS_QUERY = "topcite 1500+"
 KS = (1, 5, 10)
 BOOTSTRAP = 2000
