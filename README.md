@@ -199,8 +199,9 @@ finds papers described in other words than their abstract: half of its candidate
 Install it with `inspire-mcp index download DIR` (with the `semantic` extra: a prebuilt index of about
 650 MB from Hugging Face, checked against its sha256; or build your own with `inspire-mcp index build DIR`,
 about 15 hours on an 8-core CPU), refresh it monthly with `inspire-mcp index update DIR` (a few minutes),
-and start the server with `INSPIRE_MCP_DENSE_INDEX=DIR`; it needs about 1.3 GB of memory and reloads the index by itself after an update. Kubernetes:
-[deploy/k8s/dense-index.yaml](deploy/k8s/dense-index.yaml). Measurements: [docs/evaluation.md](docs/evaluation.md).
+and start the server with `INSPIRE_MCP_DENSE_INDEX=DIR`; it needs about 1.3 GB of memory and reloads
+the index by itself after an update. Kubernetes: [deploy/k8s/dense-index.yaml](deploy/k8s/dense-index.yaml).
+Measurements: [docs/evaluation.md](docs/evaluation.md).
 
 The HTTP endpoint has no authentication; see [SECURITY.md](SECURITY.md).
 
