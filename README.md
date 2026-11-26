@@ -145,7 +145,7 @@ tried and rejected are in [docs/evaluation.md](docs/evaluation.md).
 
 ```mermaid
 flowchart LR
-    Q[your question] --> K["keywords joined with OR, and the rarest ones<br/>(INSPIRE needs all words to match otherwise)"]
+    Q[your question] --> K["keywords joined with OR<br/>(INSPIRE needs all words to match otherwise)"]
     K --> P[(50 candidate papers<br/>from live INSPIRE)]
     P --> B["BM25 keeps the 25<br/>closest in wording"]
     B --> R["cross-encoder reads the question<br/>with each title and abstract"]
