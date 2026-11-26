@@ -225,6 +225,14 @@ development set or training set). It is frozen before any run, then the Haiku ag
 twice without the index. The index is reported as an improvement if the per-question MRR averaged over
 the runs is higher with it, with a paired permutation p < 0.05; otherwise it is reported as not confirmed.
 
+**Test result: not confirmed.** On `citations2` (62 questions; fewer than hoped, since 62 of the 500
+sampled targets had a sentence the judge kept) the agent's MRR@10 was 0.287 without the index and 0.296 with
+it, averaged over two runs each: +0.009, paired permutation p = 0.79 (9 questions better, 12 worse, 41
+equal); a single semantic_search call scored 0.20 without and 0.17 with it. The development gain did not
+carry over to new questions: the index is kept as an experimental option, off by default, and is not
+described as an improvement. More candidates in the pool are not enough: neither the cross-encoder nor the
+agent turned them into better answers on new questions.
+
 ## Offline: fixed corpus of every INSPIRE record with 1500+ citations (1396 papers, famous set)
 
 | system | R@1 | R@10 | MRR@10 [95% CI] |

@@ -1,11 +1,12 @@
-"""Optional local semantic index of INSPIRE, for services: candidates that keyword search misses.
+"""Experimental local semantic index of INSPIRE, for services: candidates that keyword search misses.
 
 INSPIRE's search matches words. A question describing a paper in other words often leaves the paper out of
 the candidates, and no reranker can then find it. A dense index of the records' titles and abstracts
 returns the nearest records by meaning; semantic_search takes half of its candidates from it and half from
-INSPIRE (`candidates(..., dense=...)`). On agent-written development questions this raised the share of
-targets among the 50 candidates from 0.39 to 0.50 for citation-like descriptions and from 0.61 to 0.82 for
-famous papers (docs/evaluation.md).
+INSPIRE (`candidates(..., dense=...)`).
+Experimental: on agent-written development questions it raised the share of targets among the 50
+candidates (0.39 -> 0.50 for citation-like descriptions, 0.61 -> 0.82 for famous papers), but the answers
+did not improve on a fresh test set (docs/evaluation.md), so it is off by default.
 
 The index holds vectors and record ids only, no text: the records found are fetched from INSPIRE live, and
 papers newer than the index still come from the live keyword search. Only records whose abstract comes from

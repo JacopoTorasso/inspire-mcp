@@ -558,8 +558,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--dense-index",
         type=Path,
         default=Path(p) if (p := _env("DENSE_INDEX", "")) else None,
-        help="directory of a local semantic index (inspire-mcp index build): half of the candidates then come "
-        "from it. Needs about 1.3 GB of memory for all of INSPIRE",
+        help="experimental: directory of a local semantic index (inspire-mcp index download/build), half of the "
+        "candidates then come from it; no gain confirmed on test questions. Needs about 1.3 GB of memory",
     )
     parser.add_argument(
         "--reranker-model",

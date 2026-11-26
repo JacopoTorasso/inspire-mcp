@@ -4,7 +4,8 @@ All notable changes. Versions follow [semantic versioning](https://semver.org).
 
 ## Unreleased
 
-* Optional local semantic index for services: `inspire-mcp index download DIR` installs a prebuilt one
+* Experimental local semantic index for services, off by default (more targets among the candidates on
+  the development sets, no gain on a fresh test set: docs/evaluation.md): `inspire-mcp index download DIR` installs a prebuilt one
   (sha256-checked), `index build` / `index update` embed the INSPIRE records with an arXiv abstract
   (bge-small, fastembed; vectors and record ids only), and with
   `--dense-index DIR` (`INSPIRE_MCP_DENSE_INDEX`) half of semantic_search's candidates come from the

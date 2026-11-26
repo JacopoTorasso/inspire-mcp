@@ -186,22 +186,23 @@ Every option is a flag or an environment variable:
 | `INSPIRE_MCP_RATE_LIMIT` | `120` | MCP requests per minute per client, `0` disables |
 | `INSPIRE_MCP_TRUST_PROXY` | `false` | identify clients by `X-Forwarded-For` behind a trusted proxy |
 | `INSPIRE_MCP_RERANKER` | `auto` | `cross-encoder`, `dense` or `bm25` |
-| `INSPIRE_MCP_DENSE_INDEX` | | directory of an optional local semantic index (below) |
+| `INSPIRE_MCP_DENSE_INDEX` | | directory of the experimental local semantic index (below) |
 | `INSPIRE_MCP_RERANKER_MODEL` | MiniLM-L6 | cross-encoder: a fastembed model, a Hugging Face repository with an ONNX export, or a local directory |
 | `INSPIRE_MCP_CACHE_TTL` | `300` | seconds INSPIRE answers stay cached in memory |
 | `INSPIRE_MCP_MIN_INTERVAL` | `0` | extra seconds between requests to INSPIRE (its limit of 15 requests per 5 s is always kept) |
 | `INSPIRE_MCP_CACHE` | `~/.cache/inspire-mcp` | embedding cache |
 | `INSPIRE_MCP_LOG_FORMAT`, `INSPIRE_MCP_LOG_LEVEL` | `text`, `INFO` | `json` for log aggregation |
 
-**Optional semantic index.** A service can keep a local index of the 836k INSPIRE records with an arXiv
-abstract (vectors and record ids only; the records are still fetched live), so that semantic_search also
-finds papers described in other words than their abstract: half of its candidates then come from it.
+**Experimental semantic index.** A service can keep a local index of the 836k INSPIRE records with an
+arXiv abstract (vectors and record ids only; the records are still fetched live): half of semantic_search's
+candidates then come from the records nearest to the question by meaning. It brings more targets into the
+candidates on the development sets, but did not improve the answers on a fresh test set, so it is off by
+default ([docs/evaluation.md](docs/evaluation.md)).
 Install it with `inspire-mcp index download DIR` (with the `semantic` extra: a prebuilt index of about
 650 MB from Hugging Face, checked against its sha256; or build your own with `inspire-mcp index build DIR`,
 about 15 hours on an 8-core CPU), refresh it monthly with `inspire-mcp index update DIR` (a few minutes),
 and start the server with `INSPIRE_MCP_DENSE_INDEX=DIR`; it needs about 1.3 GB of memory and reloads
 the index by itself after an update. Kubernetes: [deploy/k8s/dense-index.yaml](deploy/k8s/dense-index.yaml).
-Measurements: [docs/evaluation.md](docs/evaluation.md).
 
 The HTTP endpoint has no authentication; see [SECURITY.md](SECURITY.md).
 
