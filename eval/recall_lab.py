@@ -8,6 +8,7 @@ development sets only (citedev, famous, longtail):
   idfN      OR of the N content words that are rarest in the physics literature, in question order
   first+idf the two OR queries interleaved
   and2      plus an AND of the two rarest words (few, precise results); pairs4: AND of each pair of the 4 rarest
+  idf12c    rarity from abstracts and from citing sentences of the training papers, whichever is commoner
   ftN       plus INSPIRE full-text search (arXiv full texts) for the AND of the N rarest words
 
 Word rarity comes from document frequencies over the ~110k abstracts of the training pools
@@ -54,6 +55,26 @@ def document_frequencies() -> tuple[Counter, int]:
     return df, len(docs)
 
 
+def citation_frequencies() -> tuple[Counter, int]:
+    """Document frequencies over the citation sentences of the training papers (Semantic Scholar)."""
+    df: Counter = Counter()
+    n = 0
+    for f in (HERE.parent / "train" / "cache" / "s2").glob("*.json"):
+        for citing in json.loads(f.read_text()).get("data") or []:
+            for sentence in citing.get("contexts") or []:
+                n += 1
+                df.update({t.lower().strip("-") for t in TOKEN.findall(sentence)})
+    return df, n
+
+
+def combined(df: Counter, total: int, cdf: Counter, ctotal: int) -> tuple[Counter, int]:
+    """A word is as common as it is in abstracts or in citing prose, whichever is higher, scaled to abstracts."""
+    out: Counter = Counter()
+    for t in set(df) | set(cdf):
+        out[t] = max(df[t], round(cdf[t] / max(1, ctotal) * total))
+    return out, total
+
+
 def words(question: str) -> list[str]:
     seen: dict[str, None] = {}
     for tok in TOKEN.findall(question):
@@ -90,7 +111,7 @@ class Searcher:
         return self.cache[key]
 
 
-async def pools(search: Searcher, question: str, df: Counter, total: int) -> dict[str, list[int]]:
+async def pools(search: Searcher, question: str, df: Counter, total: int, both_df: Counter) -> dict[str, list[int]]:
     strict = await search(question, 25)
     first = await search(or_query(words(question)[:12]), POOL)
     idf12 = await search(or_query(rarest(question, 12, df, total)), POOL)
@@ -101,7 +122,9 @@ async def pools(search: Searcher, question: str, df: Counter, total: int) -> dic
     ft3 = await search(" and ".join(f"ft {_quote(t)}" for t in rare3), 25) if len(rare3) == 3 else []
     ft2 = await search(" and ".join(f"ft {_quote(t)}" for t in rare3[:2]), 25) if len(rare3) >= 2 else []
     both = interleave_ids(first, idf12)
+    idf12c = await search(or_query(rarest(question, 12, both_df, total)), POOL)
     out = {
+        "first12+idf12c": interleave_ids(first, idf12c),
         "first12": first,
         "first12+idf12": both,
         "and2+first12+idf12": interleave_ids(and2, first, idf12),
@@ -126,7 +149,9 @@ def merge(strict: list[int], loose: list[int]) -> list[int]:
 
 async def main() -> None:
     df, total = document_frequencies()
-    print(f"document frequencies over {total} training abstracts")
+    cdf, ctotal = citation_frequencies()
+    both_df, _ = combined(df, total, cdf, ctotal)
+    print(f"document frequencies over {total} training abstracts and {ctotal} training citation sentences")
     async with InspireClient() as client:
         search = Searcher(client)
         for name in SETS:
@@ -134,7 +159,7 @@ async def main() -> None:
             await resolve_gold(client, queries)
             hits: dict[str, list[bool]] = {}
             for q in queries:
-                for strategy, pool in (await pools(search, q["query"], df, total)).items():
+                for strategy, pool in (await pools(search, q["query"], df, total, both_df)).items():
                     hits.setdefault(strategy, []).append(q["recid"] in pool)
             SEARCHES.write_text(json.dumps(search.cache))
             print(f"\n## {name} ({len(queries)} questions), target in the {POOL}-candidate pool")
