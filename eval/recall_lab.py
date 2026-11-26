@@ -8,6 +8,7 @@ development sets only (citedev, famous, longtail):
   idfN      OR of the N content words that are rarest in the physics literature, in question order
   first+idf the two OR queries interleaved
   and2      plus an AND of the two rarest words (few, precise results); pairs4: AND of each pair of the 4 rarest
+  ftN       plus INSPIRE full-text search (arXiv full texts) for the AND of the N rarest words
 
 Word rarity comes from document frequencies over the ~110k abstracts of the training pools
 (train/cache/pools.jsonl), which hold no evaluation paper. Searches are cached per query string.
@@ -96,12 +97,17 @@ async def pools(search: Searcher, question: str, df: Counter, total: int) -> dic
     top = sorted(rarest(question, 4, df, total), key=lambda t: df[t])  # rarest first
     and2 = await search(" and ".join(_quote(t) for t in top[:2]), 25) if len(top) >= 2 else []
     pairs = [await search(f"{_quote(a)} and {_quote(b)}", 10) for i, a in enumerate(top) for b in top[i + 1 :]]
+    rare3 = sorted(rarest(question, 3, df, total), key=lambda t: df[t])
+    ft3 = await search(" and ".join(f"ft {_quote(t)}" for t in rare3), 25) if len(rare3) == 3 else []
+    ft2 = await search(" and ".join(f"ft {_quote(t)}" for t in rare3[:2]), 25) if len(rare3) >= 2 else []
+    both = interleave_ids(first, idf12)
     out = {
         "first12": first,
-        "idf12": idf12,
-        "first12+idf12": interleave_ids(first, idf12),
+        "first12+idf12": both,
         "and2+first12+idf12": interleave_ids(and2, first, idf12),
-        "pairs4+first12+idf12": interleave_ids(*pairs, first, idf12),
+        "first12+idf12+ft3": interleave_ids(first, idf12, ft3),
+        "first12+idf12+ft2": interleave_ids(first, idf12, ft2),
+        "pairs4": interleave_ids(*pairs, first, idf12),
     }
     return {name: merge(strict, loose) for name, loose in out.items()}
 
