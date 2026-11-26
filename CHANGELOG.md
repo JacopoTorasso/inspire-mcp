@@ -4,6 +4,12 @@ All notable changes. Versions follow [semantic versioning](https://semver.org).
 
 ## Unreleased
 
+* Optional local semantic index for services: `inspire-mcp index build/update DIR` embeds the INSPIRE
+  records with an arXiv abstract (bge-small, fastembed; vectors and record ids only), and with
+  `--dense-index DIR` (`INSPIRE_MCP_DENSE_INDEX`) half of semantic_search's candidates come from the
+  records nearest to the question by meaning. The server reloads the index after an update. Kubernetes
+  Job, CronJob and volume in `deploy/k8s/dense-index.yaml`.
+
 * The cross-encoder scores only the 25 candidates BM25 ranks highest: about half the reranking time,
   with no loss on any development or test set (not with `prefer_influential`, whose candidates are
   there because lexical relevance buries them).

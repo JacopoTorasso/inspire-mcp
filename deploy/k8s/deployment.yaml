@@ -29,6 +29,8 @@ spec:
             - {name: INSPIRE_MCP_LOG_FORMAT, value: json}
             - {name: INSPIRE_MCP_ALLOWED_HOSTS, value: inspire-mcp.example.org}   # your public host name
             - {name: INSPIRE_MCP_TRUST_PROXY, value: "true"}                     # behind the ingress
+            # with the optional semantic index (dense-index.yaml); then limits.memory: 3Gi
+            # - {name: INSPIRE_MCP_DENSE_INDEX, value: /index}
           resources:
             requests: {cpu: 250m, memory: 512Mi}
             limits: {cpu: "2", memory: 1Gi}
@@ -50,11 +52,14 @@ spec:
           volumeMounts:
             - {name: cache, mountPath: /cache}
             - {name: tmp, mountPath: /tmp}
+            # - {name: index, mountPath: /index, readOnly: true}
       volumes:
         - name: cache
           emptyDir: {sizeLimit: 1Gi}
         - name: tmp
           emptyDir: {}
+        # - name: index
+        #   persistentVolumeClaim: {claimName: inspire-mcp-index, readOnly: true}
 ---
 apiVersion: v1
 kind: Service
