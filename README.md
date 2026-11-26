@@ -196,10 +196,10 @@ Every option is a flag or an environment variable:
 **Optional semantic index.** A service can keep a local index of the 836k INSPIRE records with an arXiv
 abstract (vectors and record ids only; the records are still fetched live), so that semantic_search also
 finds papers described in other words than their abstract: half of its candidates then come from it.
-Build it once with `inspire-mcp index build DIR` (with the `semantic` extra: about 15 hours on an 8-core
-CPU, measured; 17 minutes on a GPU with `train/dense_index.py`), refresh it monthly with
-`inspire-mcp index update DIR` (a few minutes), and start the server with `INSPIRE_MCP_DENSE_INDEX=DIR`;
-it needs about 1.3 GB of memory and reloads the index by itself after an update. Kubernetes:
+Install it with `inspire-mcp index download DIR` (with the `semantic` extra: a prebuilt index of about
+650 MB from Hugging Face, checked against its sha256; or build your own with `inspire-mcp index build DIR`,
+about 15 hours on an 8-core CPU), refresh it monthly with `inspire-mcp index update DIR` (a few minutes),
+and start the server with `INSPIRE_MCP_DENSE_INDEX=DIR`; it needs about 1.3 GB of memory and reloads the index by itself after an update. Kubernetes:
 [deploy/k8s/dense-index.yaml](deploy/k8s/dense-index.yaml). Measurements: [docs/evaluation.md](docs/evaluation.md).
 
 The HTTP endpoint has no authentication; see [SECURITY.md](SECURITY.md).

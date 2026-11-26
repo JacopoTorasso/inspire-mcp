@@ -1,6 +1,6 @@
 # Optional: a local semantic index for semantic_search (half of its candidates then come from it).
-# 1. apply this file: the Job builds the index once (about 15 hours on 8 CPU cores), the CronJob adds new records
-#    every month; 2. in deployment.yaml, uncomment the INSPIRE_MCP_DENSE_INDEX lines and raise the memory
+# 1. apply this file: the Job downloads the prebuilt index (~650 MB, sha256-checked; or builds it with
+#    "index build", about 15 hours on 8 CPU cores), the CronJob adds new records every month; 2. in deployment.yaml, uncomment the INSPIRE_MCP_DENSE_INDEX lines and raise the memory
 #    limit (the index needs about 1.3 GB, twice that while a running server reloads an updated index).
 # The volume is written by the jobs and read by every server replica: it needs a storage class with
 # ReadWriteMany access. Servers reload the index on their own after an update (checked every 10 minutes).
@@ -16,7 +16,7 @@ spec:
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: inspire-mcp-index-build
+  name: inspire-mcp-index-init
 spec:
   backoffLimit: 2
   template:
@@ -30,9 +30,11 @@ spec:
         fsGroup: 10001
         seccompProfile: {type: RuntimeDefault}
       containers:
-        - name: build
+        - name: download
           image: ghcr.io/jacopotorasso/inspire-mcp:latest-semantic
-          command: ["/app/.venv/bin/inspire-mcp", "index", "build", "/index"]
+          command: ["/app/.venv/bin/inspire-mcp", "index", "download", "/index"]
+          env:
+            - {name: HF_HOME, value: /tmp/hf}       # the download cache; the root filesystem is read-only
           resources:
             requests: {cpu: "2", memory: 2Gi}
             limits: {cpu: "4", memory: 3Gi}

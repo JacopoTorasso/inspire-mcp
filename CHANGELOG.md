@@ -4,8 +4,9 @@ All notable changes. Versions follow [semantic versioning](https://semver.org).
 
 ## Unreleased
 
-* Optional local semantic index for services: `inspire-mcp index build/update DIR` embeds the INSPIRE
-  records with an arXiv abstract (bge-small, fastembed; vectors and record ids only), and with
+* Optional local semantic index for services: `inspire-mcp index download DIR` installs a prebuilt one
+  (sha256-checked), `index build` / `index update` embed the INSPIRE records with an arXiv abstract
+  (bge-small, fastembed; vectors and record ids only), and with
   `--dense-index DIR` (`INSPIRE_MCP_DENSE_INDEX`) half of semantic_search's candidates come from the
   records nearest to the question by meaning. The server reloads the index after an update. Kubernetes
   Job, CronJob and volume in `deploy/k8s/dense-index.yaml`.

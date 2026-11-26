@@ -185,3 +185,24 @@ async def test_server_reloads_the_dense_index_when_the_file_changes(tmp_path, mo
                 break
         third = await client.call_tool("semantic_search", {"question": "higgs boson"})
     assert len(loads) == 2 and third.structured_content["retrieval"]["dense_index"] == "fake:2"
+
+
+def test_download_installs_a_checked_index_and_refuses_a_corrupted_one(tmp_path, monkeypatch):
+    import json
+
+    import huggingface_hub
+
+    import inspire_mcp.dense as dense
+
+    remote = tmp_path / "remote"
+    dense.save(remote, np.array([7, 8]), np.eye(2), "BAAI/bge-small-en-v1.5", "2026-11-01")
+    monkeypatch.setattr(huggingface_hub, "hf_hub_download", lambda repo, name, **kw: str(remote / name))
+    meta = dense.download(tmp_path / "local", repo="someone/index")
+    assert meta["records"] == 2 and (tmp_path / "local" / "index.npz").exists()
+    assert dense.DenseIndex(tmp_path / "local", embedder=FakeEmbedder()).records == 2
+
+    bad = json.loads((remote / "index.json").read_text()) | {"sha256": "0" * 64}
+    (remote / "index.json").write_text(json.dumps(bad))
+    with pytest.raises(RuntimeError, match="sha256"):
+        dense.download(tmp_path / "other", repo="someone/index")
+    assert not (tmp_path / "other" / "index.npz").exists()

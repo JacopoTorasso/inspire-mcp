@@ -16,6 +16,7 @@ arXiv are indexed (arXiv metadata is CC0). Layout of an index directory:
                   836k x 384), and `recids` int64 INSPIRE record ids in the same order; one file, replaced
                   atomically, so a server starting during an update never reads half of it
 
+    inspire-mcp index download DIR         # a prebuilt index from Hugging Face, checked against its sha256
     inspire-mcp index build DIR            # every record: ~15 h on an 8-core CPU (17 min on a GPU, train/)
     inspire-mcp index update DIR           # records since the newest date in the index
 """
@@ -23,9 +24,11 @@ arXiv are indexed (arXiv metadata is CC0). Layout of an index directory:
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import json
 import logging
 import os
+import shutil
 from collections.abc import AsyncIterator
 from datetime import date, timedelta
 from pathlib import Path
@@ -36,6 +39,8 @@ from .client import InspireClient
 log = logging.getLogger(__name__)
 
 DEFAULT_MODEL = "BAAI/bge-small-en-v1.5"
+# Hugging Face dataset with a prebuilt index (train/export_index_hf.py); vectors of CC0 arXiv metadata
+DEFAULT_REPO = "JacopoTorasso/inspire-hep-dense-index"
 # bge retrieval models expect this before a query (not before a passage); fastembed does not add it
 QUERY_PREFIXES = {"BAAI/bge": "Represent this sentence for searching relevant passages: "}
 HARVEST_QUERY = "abstracts.source:arXiv"
@@ -106,6 +111,34 @@ def _embedder(model: str) -> Any:
     return TextEmbedding(model)
 
 
+def sha256(file: Path) -> str:
+    digest = hashlib.sha256()
+    with open(file, "rb") as f:
+        for block in iter(lambda: f.read(1 << 20), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def download(path: Path, repo: str = DEFAULT_REPO, revision: str | None = None) -> dict[str, Any]:
+    """Install the prebuilt index of a Hugging Face dataset into `path`, after checking the file against the
+    sha256 in its index.json. Returns that metadata. `inspire-mcp index update` then adds newer records."""
+    try:
+        from huggingface_hub import hf_hub_download
+    except ImportError as exc:  # pragma: no cover - exercised only without the extra
+        raise RuntimeError("downloading the index needs the 'semantic' extra") from exc
+    meta_file = hf_hub_download(repo, "index.json", repo_type="dataset", revision=revision)
+    meta = json.loads(Path(meta_file).read_text())
+    npz = Path(hf_hub_download(repo, "index.npz", repo_type="dataset", revision=revision))
+    if meta.get("sha256") and sha256(npz) != meta["sha256"]:
+        raise RuntimeError(f"{repo}: index.npz does not match the sha256 in index.json")
+    path.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(npz, path / "index.npz.tmp")
+    os.replace(path / "index.npz.tmp", path / "index.npz")
+    (path / "index.json.tmp").write_text(json.dumps(meta, indent=1))
+    os.replace(path / "index.json.tmp", path / "index.json")
+    return meta
+
+
 def save(path: Path, recids: Any, vectors: Any, model: str, newest: str) -> None:
     """Write an index directory; each file is written aside and renamed into place."""
     import numpy as np
@@ -114,7 +147,13 @@ def save(path: Path, recids: Any, vectors: Any, model: str, newest: str) -> None
     with open(path / "index.npz.tmp", "wb") as f:
         np.savez(f, recids=recids.astype(np.int64), vectors=vectors.astype(np.float16))
     os.replace(path / "index.npz.tmp", path / "index.npz")
-    meta = {"model": model, "query_prefix": query_prefix(model), "records": int(len(recids)), "newest": newest}
+    meta = {
+        "model": model,
+        "query_prefix": query_prefix(model),
+        "records": int(len(recids)),
+        "newest": newest,
+        "sha256": sha256(path / "index.npz"),
+    }
     (path / "index.json.tmp").write_text(json.dumps(meta, indent=1))
     os.replace(path / "index.json.tmp", path / "index.json")
 

@@ -164,9 +164,14 @@ def _config() -> int:
     return 0
 
 
-async def _index(action: str, directory: Path, model: str | None) -> int:
-    from .dense import DEFAULT_MODEL, build
+async def _index(action: str, directory: Path, model: str | None, repo: str | None = None) -> int:
+    from .dense import DEFAULT_MODEL, DEFAULT_REPO, build, download
 
+    if action == "download":
+        meta = await asyncio.to_thread(download, directory, repo or DEFAULT_REPO)
+        print(f"{meta['records']} records ({meta['model']}, newest {meta['newest']}) in {directory}")
+        print(f"keep it current with: inspire-mcp index update {directory}")
+        return 0
     if action == "update" and not (directory / "index.json").exists():
         print(f"{directory} holds no index: run 'inspire-mcp index build {directory}' first", file=sys.stderr)
         return 1
@@ -189,9 +194,14 @@ def run(argv: list[str]) -> int:
     sub.add_parser("doctor", help="check the setup")
     sub.add_parser("config", help="print configuration for AI clients")
     ix = sub.add_parser("index", help="build or update a local semantic index for a service (--dense-index)")
-    ix.add_argument("action", choices=["build", "update"], help="build: every record; update: the newest ones")
+    ix.add_argument(
+        "action",
+        choices=["download", "build", "update"],
+        help="download: a prebuilt index; build: embed every record; update: add the newest ones",
+    )
     ix.add_argument("directory", type=Path)
     ix.add_argument("--model", default=None, help="fastembed text embedding model (build only)")
+    ix.add_argument("--repo", default=None, help="Hugging Face dataset to download from (download only)")
     args = parser.parse_args(argv)
     if args.command == "search":
         return asyncio.run(_search(" ".join(args.question), max(1, min(args.size, 25)), args.json))
@@ -200,5 +210,5 @@ def run(argv: list[str]) -> int:
     if args.command == "doctor":
         return asyncio.run(_doctor())
     if args.command == "index":
-        return asyncio.run(_index(args.action, args.directory, args.model))
+        return asyncio.run(_index(args.action, args.directory, args.model, args.repo))
     return _config()
