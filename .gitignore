@@ -9,3 +9,5 @@ dist/
 train/cache/
 train/models/
 train/onnx/
+eval/results/*citedev*.json
+eval/results/*citations*.json
