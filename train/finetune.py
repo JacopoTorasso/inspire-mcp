@@ -160,6 +160,7 @@ def main() -> None:
     parser.add_argument("--seed", type=int, default=7)
     parser.add_argument("--eval-only", action="store_true", help="evaluate --base and stop")
     parser.add_argument("--pools-tag", default="", help="evaluate on eval/cache/pools-*-<tag>.json")
+    parser.add_argument("--pools-file", type=Path, help="evaluate on this pool file instead (e.g. pools-agentdev.json)")
     args = parser.parse_args()
     rng = random.Random(args.seed)
     torch.manual_seed(args.seed)
@@ -168,7 +169,8 @@ def main() -> None:
     model = AutoModelForSequenceClassification.from_pretrained(args.base).to(device)
 
     if args.eval_only:
-        print(json.dumps(evaluate(model, tok, device, eval_pools(args.pools_tag), deep=True)))
+        pools = (args.pools_file,) if args.pools_file else eval_pools(args.pools_tag)
+        print(json.dumps(evaluate(model, tok, device, pools, deep=True)))
         return
     log = {"args": {k: str(v) for k, v in vars(args).items()}, "epochs": []}
     base = evaluate(model, tok, device)
