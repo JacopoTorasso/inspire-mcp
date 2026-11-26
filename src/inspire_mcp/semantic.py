@@ -29,7 +29,7 @@ from collections import Counter
 from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Literal, Protocol
+from typing import Any, Literal, Protocol
 
 from .client import InspireClient, InspireError, Paper
 
@@ -186,7 +186,7 @@ class DenseReranker:
 DEFAULT_CROSS_ENCODER = "Xenova/ms-marco-MiniLM-L-6-v2"
 
 
-def load_cross_encoder(text_cross_encoder: type, model: str):
+def load_cross_encoder(text_cross_encoder: Any, model: str) -> Any:
     """A fastembed cross-encoder: a model fastembed ships, a directory with an ONNX export
     (config and tokenizer files, onnx/model.onnx), or a Hugging Face repository laid out the same way."""
     supported = {m["model"] for m in text_cross_encoder.list_supported_models()}
