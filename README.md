@@ -145,9 +145,10 @@ tried and rejected are in [docs/evaluation.md](docs/evaluation.md).
 
 ```mermaid
 flowchart LR
-    Q[your question] --> K["keywords joined with OR<br/>(INSPIRE needs all words to match otherwise)"]
+    Q[your question] --> K["keywords joined with OR, and the rarest ones<br/>(INSPIRE needs all words to match otherwise)"]
     K --> P[(50 candidate papers<br/>from live INSPIRE)]
-    P --> R["cross-encoder reads the question<br/>with each title and abstract"]
+    P --> B["BM25 keeps the 25<br/>closest in wording"]
+    B --> R["cross-encoder reads the question<br/>with each title and abstract"]
     R --> A[best matches, with links<br/>and how they were found]
 ```
 
@@ -185,6 +186,7 @@ Every option is a flag or an environment variable:
 | `INSPIRE_MCP_RATE_LIMIT` | `120` | MCP requests per minute per client, `0` disables |
 | `INSPIRE_MCP_TRUST_PROXY` | `false` | identify clients by `X-Forwarded-For` behind a trusted proxy |
 | `INSPIRE_MCP_RERANKER` | `auto` | `cross-encoder`, `dense` or `bm25` |
+| `INSPIRE_MCP_RERANKER_MODEL` | MiniLM-L6 | cross-encoder: a fastembed model, a Hugging Face repository with an ONNX export, or a local directory |
 | `INSPIRE_MCP_CACHE_TTL` | `300` | seconds INSPIRE answers stay cached in memory |
 | `INSPIRE_MCP_MIN_INTERVAL` | `0` | extra seconds between requests to INSPIRE (its limit of 15 requests per 5 s is always kept) |
 | `INSPIRE_MCP_CACHE` | `~/.cache/inspire-mcp` | embedding cache |
