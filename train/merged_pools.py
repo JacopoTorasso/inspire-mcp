@@ -28,8 +28,8 @@ HALF = 25
 def main() -> None:
     model_name = sys.argv[1]
     d = index_dir(model_name)
-    vectors = torch.from_numpy(np.load(d / "vectors.npy")).cuda()
-    recids = np.load(d / "recids.npy")
+    arrays = np.load(d / "index.npz")
+    vectors, recids = torch.from_numpy(arrays["vectors"]).cuda(), arrays["recids"]
     corpus = {}
     for line in CORPUS.open():
         r = json.loads(line)

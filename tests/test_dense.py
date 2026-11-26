@@ -33,8 +33,7 @@ def write_index(path, recids, vectors, prefix="q: "):
     import json
 
     path.mkdir(parents=True, exist_ok=True)
-    np.save(path / "recids.npy", np.array(recids, dtype=np.int64))
-    np.save(path / "vectors.npy", np.array(vectors, dtype=np.float16))
+    np.savez(path / "index.npz", recids=np.array(recids, dtype=np.int64), vectors=np.array(vectors, dtype=np.float16))
     meta = {"model": "fake", "query_prefix": prefix, "records": len(recids), "newest": "2026-11-01"}
     (path / "index.json").write_text(json.dumps(meta))
 
@@ -103,7 +102,8 @@ async def test_build_then_update_replaces_records_and_keeps_one_row_each(tmp_pat
     batches = [[(3, "delta three", "2024-03-01"), (1, "beta one", "2024-01-05")]]
     assert await dense.build(tmp_path, update=True, client=InspireClient()) == 2
     index = dense.DenseIndex(tmp_path, embedder=FakeEmbedder())
-    assert sorted(np.load(tmp_path / "recids.npy").tolist()) == [1, 2, 3] and index.newest == "2024-03-01"
+    assert sorted(np.load(tmp_path / "index.npz")["recids"].tolist()) == [1, 2, 3] and index.newest == "2024-03-01"
+    assert not list(tmp_path.glob("*.tmp"))  # written aside, then renamed
     assert index.search("beta", k=1) == [1]  # record 1 re-embedded as 'beta'
 
 

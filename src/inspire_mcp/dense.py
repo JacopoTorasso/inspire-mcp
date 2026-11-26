@@ -12,8 +12,9 @@ papers newer than the index still come from the live keyword search. Only record
 arXiv are indexed (arXiv metadata is CC0). Layout of an index directory:
 
     index.json    model, query prefix, record count, newest earliest-date covered
-    vectors.npy   float16, one normalized row per record (loaded as float32: ~1.3 GB for 836k x 384)
-    recids.npy    int64 INSPIRE record ids, same order
+    index.npz     `vectors` float16, one normalized row per record (loaded as float32: ~1.3 GB for
+                  836k x 384), and `recids` int64 INSPIRE record ids in the same order; one file, replaced
+                  atomically, so a server starting during an update never reads half of it
 
     inspire-mcp index build DIR            # every record, a few hours on a CPU
     inspire-mcp index update DIR           # records since the newest date in the index
@@ -24,6 +25,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import os
 from collections.abc import AsyncIterator
 from datetime import date, timedelta
 from pathlib import Path
@@ -104,6 +106,19 @@ def _embedder(model: str) -> Any:
     return TextEmbedding(model)
 
 
+def save(path: Path, recids: Any, vectors: Any, model: str, newest: str) -> None:
+    """Write an index directory; each file is written aside and renamed into place."""
+    import numpy as np
+
+    path.mkdir(parents=True, exist_ok=True)
+    with open(path / "index.npz.tmp", "wb") as f:
+        np.savez(f, recids=recids.astype(np.int64), vectors=vectors.astype(np.float16))
+    os.replace(path / "index.npz.tmp", path / "index.npz")
+    meta = {"model": model, "query_prefix": query_prefix(model), "records": int(len(recids)), "newest": newest}
+    (path / "index.json.tmp").write_text(json.dumps(meta, indent=1))
+    os.replace(path / "index.json.tmp", path / "index.json")
+
+
 def _embed(embedder: Any, texts: list[str]) -> Any:
     import numpy as np
 
@@ -138,18 +153,16 @@ async def build(
             log.info("index: %d records embedded", len(recids))
     new_ids = np.array(recids, dtype=np.int64)
     new_vecs = np.concatenate(vectors) if vectors else np.zeros((0, 0), dtype=np.float16)
-    if update and (path / "recids.npy").exists():
-        old_ids, old_vecs = np.load(path / "recids.npy"), np.load(path / "vectors.npy")
+    if update and (path / "index.npz").exists():
+        with np.load(path / "index.npz") as old:
+            old_ids, old_vecs = old["recids"], old["vectors"]
         keep = ~np.isin(old_ids, new_ids)  # a re-embedded record replaces its old row
         new_ids = np.concatenate([old_ids[keep], new_ids])
         new_vecs = np.concatenate([old_vecs[keep], new_vecs]) if len(new_vecs) else old_vecs[keep]
     # a record listed twice (e.g. harvested in two months) keeps one row: the last, most recently fetched
     _, from_end = np.unique(new_ids[::-1], return_index=True)
     last = np.sort(len(new_ids) - 1 - from_end)
-    np.save(path / "recids.npy", new_ids[last])
-    np.save(path / "vectors.npy", new_vecs[last])
-    meta = {"model": model, "query_prefix": query_prefix(model), "records": int(len(last)), "newest": newest}
-    (path / "index.json").write_text(json.dumps(meta, indent=1))
+    save(path, new_ids[last], new_vecs[last], model, newest)
     return len(recids)
 
 
@@ -161,12 +174,14 @@ class DenseIndex:
 
         meta = json.loads((path / "index.json").read_text())
         self.path, self.model, self.prefix = path, meta["model"], meta.get("query_prefix", "")
-        self.records, self.newest = meta["records"], meta.get("newest")
+        self.newest = meta.get("newest")
         # float32 in memory: a matrix-vector product in ~50 ms for 836k records (float16 is ~20x slower in numpy)
-        self._vectors = np.load(path / "vectors.npy").astype(np.float32)
-        self._recids = np.load(path / "recids.npy")
+        with np.load(path / "index.npz") as arrays:
+            self._vectors = arrays["vectors"].astype(np.float32)
+            self._recids = arrays["recids"]
         if len(self._recids) != len(self._vectors):
             raise ValueError(f"{path}: {len(self._recids)} record ids for {len(self._vectors)} vectors")
+        self.records = len(self._recids)
         self._embedder = embedder or _embedder(self.model)
         self.name = f"dense-index:{self.model.split('/')[-1]}:{self.records}"
 

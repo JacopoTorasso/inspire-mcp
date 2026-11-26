@@ -38,8 +38,8 @@ def interleave(*lists: list[int]) -> list[int]:
 def main() -> None:
     model_name = sys.argv[1]
     d = index_dir(model_name)
-    vectors = torch.from_numpy(np.load(d / "vectors.npy")).cuda()
-    recids = np.load(d / "recids.npy")
+    arrays = np.load(d / "index.npz")
+    vectors, recids = torch.from_numpy(arrays["vectors"]).cuda(), arrays["recids"]
     in_index = set(recids.tolist())
     model = SentenceTransformer(model_name, device="cuda")
     prefix = next((p for k, p in QUERY_PREFIX.items() if k in model_name.lower()), "")
