@@ -140,8 +140,10 @@ def brief(papers: list[Any]) -> str:
 
 
 class Tools:
-    def __init__(self, inspire: InspireClient, reranker: CrossEncoderReranker, semantic_k: int = 10) -> None:
-        self.inspire, self.reranker, self.semantic_k = inspire, reranker, semantic_k
+    def __init__(
+        self, inspire: InspireClient, reranker: CrossEncoderReranker, semantic_k: int = 10, dense: Any = None
+    ) -> None:
+        self.inspire, self.reranker, self.semantic_k, self.dense = inspire, reranker, semantic_k, dense
 
     async def run(self, name: str, args: dict[str, Any]) -> tuple[str, bool]:
         try:
@@ -161,6 +163,7 @@ class Tools:
                     pool=pool,
                     reranker=self.reranker,
                     influential=pool // 2 if args.get("prefer_influential") else 0,
+                    dense=self.dense,
                 )
                 return brief(result.papers), False
         except InspireError as exc:
@@ -239,10 +242,12 @@ async def run_question(client: AsyncAnthropic, model: str, tools: Tools, arm: st
 
 
 async def measure_single_call(tools: Tools, queries: list[dict[str, Any]]) -> dict[str, int | None]:
-    """The same baseline computed now, for sets run_eval.py does not cover (the held-out set)."""
+    """One semantic_search call with the question as it is, with the same tools as the agent."""
     ranks = {}
     for q in queries:
-        result = await semantic_search(tools.inspire, q["query"], k=10, pool=50, reranker=tools.reranker)
+        result = await semantic_search(
+            tools.inspire, q["query"], k=10, pool=50, reranker=tools.reranker, dense=tools.dense
+        )
         ranks[q["id"]] = rank_of([p.recid for p in result.papers], q["recid"])
     return ranks
 
@@ -256,6 +261,8 @@ async def main() -> None:
     parser.add_argument("--reranker-model", default=None, help="cross-encoder for semantic_search (default MiniLM-L6)")
     parser.add_argument("--semantic-k", type=int, default=10, help="candidates semantic_search shows the agent")
     parser.add_argument("--arms", default="AB", help="A (search only), B (with semantic_search) or AB")
+    parser.add_argument("--dense-index", type=Path, default=None, help="semantic_search with this dense index")
+    parser.add_argument("--repeat", type=int, default=1, help="tag of a repeated run (agent runs vary)")
     args = parser.parse_args()
 
     client = AsyncAnthropic(api_key=load_key(), max_retries=3)
@@ -269,7 +276,10 @@ async def main() -> None:
     async with InspireClient() as inspire:
         for queries in sets.values():
             await resolve_gold(inspire, queries)
-        tools = Tools(inspire, reranker, args.semantic_k)
+        from inspire_mcp.dense import DenseIndex
+
+        dense = await asyncio.to_thread(DenseIndex, args.dense_index) if args.dense_index else None
+        tools = Tools(inspire, reranker, args.semantic_k, dense)
 
         async def one(q: dict[str, Any], arm: str) -> tuple[str, str, dict[str, Any]]:
             async with sem:
@@ -365,6 +375,10 @@ async def main() -> None:
         tag += f"-k{args.semantic_k}"
     if args.arms != "AB":
         tag += f"-{args.arms}"
+    if args.dense_index:
+        tag += "-dense"
+    if args.repeat > 1:
+        tag += f"-r{args.repeat}"
     out = RESULTS / f"agent-{args.model}-{report['date']}{tag}.json"
     out.write_text(json.dumps(report, indent=2, ensure_ascii=False))
     for name, block in report["sets"].items():
