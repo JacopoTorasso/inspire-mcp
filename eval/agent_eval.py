@@ -140,8 +140,8 @@ def brief(papers: list[Any]) -> str:
 
 
 class Tools:
-    def __init__(self, inspire: InspireClient, reranker: CrossEncoderReranker) -> None:
-        self.inspire, self.reranker = inspire, reranker
+    def __init__(self, inspire: InspireClient, reranker: CrossEncoderReranker, semantic_k: int = 10) -> None:
+        self.inspire, self.reranker, self.semantic_k = inspire, reranker, semantic_k
 
     async def run(self, name: str, args: dict[str, Any]) -> tuple[str, bool]:
         try:
@@ -157,7 +157,7 @@ class Tools:
                 result = await semantic_search(
                     self.inspire,
                     args["question"],
-                    k=10,
+                    k=self.semantic_k,
                     pool=pool,
                     reranker=self.reranker,
                     influential=pool // 2 if args.get("prefer_influential") else 0,
@@ -238,13 +238,6 @@ async def run_question(client: AsyncAnthropic, model: str, tools: Tools, arm: st
     }
 
 
-def stored_single_call() -> dict[str, dict[str, int | None]]:
-    """Ranks of the plain semantic_search tool (one call, cross-encoder) from the latest run_eval.py result."""
-    latest = sorted(RESULTS.glob("results-*.json"))[-1]
-    live = json.loads(latest.read_text())["live"]
-    return {name: live[name]["ranks"]["or+xenc"] for name in live}
-
-
 async def measure_single_call(tools: Tools, queries: list[dict[str, Any]]) -> dict[str, int | None]:
     """The same baseline computed now, for sets run_eval.py does not cover (the held-out set)."""
     ranks = {}
@@ -261,6 +254,8 @@ async def main() -> None:
     parser.add_argument("--concurrency", type=int, default=4)
     parser.add_argument("--sets", choices=["dev", "heldout", "citedev"], default="dev")
     parser.add_argument("--reranker-model", default=None, help="cross-encoder for semantic_search (default MiniLM-L6)")
+    parser.add_argument("--semantic-k", type=int, default=10, help="candidates semantic_search shows the agent")
+    parser.add_argument("--arms", default="AB", help="A (search only), B (with semantic_search) or AB")
     args = parser.parse_args()
 
     client = AsyncAnthropic(api_key=load_key(), max_retries=3)
@@ -274,7 +269,7 @@ async def main() -> None:
     async with InspireClient() as inspire:
         for queries in sets.values():
             await resolve_gold(inspire, queries)
-        tools = Tools(inspire, reranker)
+        tools = Tools(inspire, reranker, args.semantic_k)
 
         async def one(q: dict[str, Any], arm: str) -> tuple[str, str, dict[str, Any]]:
             async with sem:
@@ -296,13 +291,10 @@ async def main() -> None:
                 )
                 return q["id"], arm, out
 
-        jobs = [one(q, arm) for qs in sets.values() for q in qs for arm in ("A", "B")]
+        jobs = [one(q, arm) for qs in sets.values() for q in qs for arm in args.arms]
         done = await asyncio.gather(*jobs)
-        baseline = (
-            stored_single_call()
-            if args.sets == "dev"
-            else {name: await measure_single_call(tools, qs) for name, qs in sets.items()}
-        )
+        # measured now, with the current pipeline, so that every row of the report shares the same code
+        baseline = {name: await measure_single_call(tools, qs) for name, qs in sets.items()}
 
     runs = {(qid, arm): out for qid, arm, out in done}
     rng = random.Random(SEED)
@@ -317,8 +309,10 @@ async def main() -> None:
     for name, queries in sets.items():
         ranks = {
             "single_call": [baseline[name].get(q["id"]) for q in queries],
-            "agent_A": [rank_of(runs[(q["id"], "A")]["ranking"][:10], q["recid"]) for q in queries],
-            "agent_B": [rank_of(runs[(q["id"], "B")]["ranking"][:10], q["recid"]) for q in queries],
+            **{
+                f"agent_{arm}": [rank_of(runs[(q["id"], arm)]["ranking"][:10], q["recid"]) for q in queries]
+                for arm in args.arms
+            },
         }
         summary = {}
         for system, rs in ranks.items():
@@ -326,7 +320,7 @@ async def main() -> None:
             summary[system] = {m: round(statistics.fmean(v), 3) for m, v in s.items()}
             summary[system]["MRR@10_ci95"] = [round(x, 3) for x in bootstrap_ci(s["MRR@10"], rng)]
         mrr = {k: per_query_scores(v)["MRR@10"] for k, v in ranks.items()}
-        for arm in ("A", "B"):
+        for arm in args.arms:
             outs = [runs[(q["id"], arm)] for q in queries]
             summary[f"agent_{arm}"].update(
                 {
@@ -342,6 +336,7 @@ async def main() -> None:
             "paired_permutation_p_mrr": {
                 f"{x} vs {y}": round(paired_permutation_p(mrr[x], mrr[y], rng), 4)
                 for x, y in (("agent_B", "agent_A"), ("agent_A", "single_call"), ("agent_B", "single_call"))
+                if x in mrr and y in mrr
             },
             "per_query": [
                 {
@@ -354,7 +349,7 @@ async def main() -> None:
                             "queries": [c["input"] for c in runs[(q["id"], arm)]["tool_calls"]],
                             "cost_usd": round(runs[(q["id"], arm)]["cost_usd"], 5),
                         }
-                        for arm in ("A", "B")
+                        for arm in args.arms
                     },
                 }
                 for q in queries
@@ -366,6 +361,10 @@ async def main() -> None:
     tag = (f"-pilot{args.limit}" if args.limit else "") + (f"-{args.sets}" if args.sets != "dev" else "")
     if args.reranker_model:
         tag += "-" + Path(args.reranker_model.rstrip("/")).name
+    if args.semantic_k != 10:
+        tag += f"-k{args.semantic_k}"
+    if args.arms != "AB":
+        tag += f"-{args.arms}"
     out = RESULTS / f"agent-{args.model}-{report['date']}{tag}.json"
     out.write_text(json.dumps(report, indent=2, ensure_ascii=False))
     for name, block in report["sets"].items():

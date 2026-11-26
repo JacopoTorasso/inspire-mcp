@@ -53,6 +53,7 @@ SETS = {
     "citedev": ("citedev",),  # citation contexts: questions not written from the abstract
     "test": ("heldout",),
     "citetest": ("citations",),  # frozen test set: run once, to confirm
+    "agentdev": ("agentdev",),  # agent-written queries on the development sets, frozen by agent_queries.py
 }
 PREFILTER = (15, 25, 35)  # BM25 keeps this many of the first 50 candidates for the cross-encoder
 
