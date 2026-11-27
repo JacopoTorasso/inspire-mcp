@@ -492,6 +492,8 @@ def build_server(
     async def prometheus(request: Request) -> Response:
         return PlainTextResponse(metrics.render(), media_type="text/plain; version=0.0.4")
 
+    for tool in server._tool_manager.list_tools():  # the SDK has no public hook for the listed schema
+        tool.parameters = _without_titles(tool.parameters)
     return server
 
 
@@ -529,6 +531,17 @@ FULL_ABSTRACTS = 3  # semantic_search results in full; the agent reads these clo
 ABSTRACT_EXCERPT = 400  # characters of abstract for the later ones, enough to tell a near miss
 RANKED_DROP = ("keywords", "categories", "pdf_url")  # in get_paper; pdf_url follows from arxiv_id
 LATER_DROP = ("journal", "doi")  # also left out after the first results; get_paper has them
+
+
+def _without_titles(schema: Any) -> Any:
+    """Drop the "title" pydantic gives every argument ("Size" for size) and every argument model: they
+    repeat the names, and in the tool list a model reads with each question they were 14% of its tokens.
+    Only string values are titles; a property named "title" maps to a schema, so it is kept."""
+    if isinstance(schema, dict):
+        return {k: _without_titles(v) for k, v in schema.items() if not (k == "title" and isinstance(v, str))}
+    if isinstance(schema, list):
+        return [_without_titles(v) for v in schema]
+    return schema
 
 
 def _ranked_result(paper: Paper, rank: int, compact: bool) -> dict[str, Any]:

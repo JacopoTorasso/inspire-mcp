@@ -204,3 +204,18 @@ async def test_tool_results_are_compact_json_with_the_same_structured_content():
     text = result.content[0].text
     assert "\n" not in text and ", " not in text.split('"abstract"')[0]
     assert json.loads(text) == result.structured_content and result.structured_content["total"] == 1
+
+
+async def test_listed_tool_schemas_carry_no_pydantic_titles():
+    from inspire_mcp.server import _without_titles
+
+    async with Client(server()) as client:
+        tools = (await client.list_tools()).tools
+    assert all('"title"' not in json.dumps(t.input_schema) for t in tools)
+    semantic = next(t for t in tools if t.name == "semantic_search")
+    assert (
+        semantic.input_schema["required"] == ["question"]
+        and semantic.input_schema["properties"]["size"]["default"] == 10
+    )
+    kept = {"properties": {"title": {"title": "Title", "type": "string"}}, "title": "fArguments"}
+    assert _without_titles(kept) == {"properties": {"title": {"type": "string"}}}
