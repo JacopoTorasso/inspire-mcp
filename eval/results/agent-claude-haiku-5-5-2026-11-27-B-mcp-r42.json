@@ -1,0 +1,2122 @@
+{
+  "date": "2026-11-27",
+  "model": "claude-haiku-5-5",
+  "effort": "medium",
+  "max_turns": 8,
+  "prices_usd_per_mtok": {
+    "input": 0.1,
+    "output": 0.5,
+    "cache_read": 0.01,
+    "cache_write": 0.125
+  },
+  "sets": {
+    "famous": {
+      "n": 60,
+      "summary": {
+        "single_call": {
+          "R@1": 0.25,
+          "R@5": 0.367,
+          "R@10": 0.417,
+          "MRR@10": 0.303,
+          "MRR@10_ci95": [
+            0.2,
+            0.416
+          ]
+        },
+        "agent_B": {
+          "R@1": 1.0,
+          "R@5": 1.0,
+          "R@10": 1.0,
+          "MRR@10": 1.0,
+          "MRR@10_ci95": [
+            1.0,
+            1.0
+          ],
+          "mean_tool_calls": 2.2,
+          "mean_cost_usd": 0.00134,
+          "median_latency_s": 5.0,
+          "outcomes": {
+            "submitted": 60
+          }
+        }
+      },
+      "paired_permutation_p_mrr": {
+        "agent_B vs single_call": 0.0001
+      },
+      "per_query": [
+        {
+          "id": "q01",
+          "gold": 1124337,
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "identifier": "1207.7214"
+              }
+            ],
+            "cost_usd": 0.00091
+          }
+        },
+        {
+          "id": "q02",
+          "gold": 1124338,
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "query": "t Observation of a new boson at a mass of 125 GeV with the CMS experiment at the LHC and cn CMS",
+                "size": 5
+              },
+              {
+                "query": "arxiv:1207.7235",
+                "size": 3
+              }
+            ],
+            "cost_usd": 0.0012
+          }
+        },
+        {
+          "id": "q03",
+          "gold": 451647,
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "query": "arxiv:hep-th/9711200",
+                "size": 3
+              }
+            ],
+            "cost_usd": 0.00088
+          }
+        },
+        {
+          "id": "q04",
+          "gold": 467400,
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "question": "Witten Anti de Sitter space and holography boundary correlation functions related to bulk action",
+                "size": 5
+              },
+              {
+                "query": "a E.Witten.1 and t Anti de Sitter space and holography",
+                "size": 3
+              },
+              {
+                "query": "arxiv:hep-th/9802150",
+                "size": 3
+              },
+              {
+                "query": "arxiv:hep-th/9805171",
+                "size": 3
+              }
+            ],
+            "cost_usd": 0.00157
+          }
+        },
+        {
+          "id": "q05",
+          "gold": 467202,
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "query": "arxiv:hep-th/9802109",
+                "size": 3
+              },
+              {
+                "question": "gauge theory correlators from non-critical string theory",
+                "size": 5
+              }
+            ],
+            "cost_usd": 0.00127
+          }
+        },
+        {
+          "id": "q06",
+          "gold": 499284,
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "question": "warped extra dimension explaining weak to Planck scale hierarchy with exponential factor",
+                "size": 10
+              },
+              {
+                "query": "t \"A large mass hierarchy from a small extra dimension\"",
+                "size": 5
+              }
+            ],
+            "cost_usd": 0.0015
+          }
+        },
+        {
+          "id": "q07",
+          "gold": 468052,
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "query": "t \"hierarchy problem and new dimensions at a millimeter\"",
+                "size": 5
+              },
+              {
+                "query": "t \"new dimensions at a millimeter to a Fermi and superstrings at a TeV\"",
+                "size": 5
+              }
+            ],
+            "cost_usd": 0.0013
+          }
+        },
+        {
+          "id": "q08",
+          "gold": 1682902,
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "query": "t Planck 2018 results. VI. Cosmological parameters",
+                "size": 5
+              },
+              {
+                "question": "cosmological parameters from the final release of Planck CMB satellite data",
+                "size": 5
+              }
+            ],
+            "cost_usd": 0.00138
+          }
+        },
+        {
+          "id": "q09",
+          "gold": 1421100,
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "query": "t Observation of Gravitational Waves from a Binary Black Hole Merger and cn LIGO Scientific",
+                "size": 5
+              },
+              {
+                "question": "first direct detection of gravitational waves from two merging black holes by LIGO",
+                "size": 5
+              }
+            ],
+            "cost_usd": 0.00147
+          }
+        },
+        {
+          "id": "q10",
+          "gold": 779080,
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "question": "anti-kt jet clustering algorithm infrared and collinear safe sequential recombination regular cone-shaped jets",
+                "size": 5
+              },
+              {
+                "query": "arxiv:0802.1189",
+                "size": 3
+              }
+            ],
+            "cost_usd": 0.00127
+          }
+        },
+        {
+          "id": "q11",
+          "gold": 955176,
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "query": "t FastJet user manual",
+                "size": 5
+              },
+              {
+                "query": "t Dispelling the N^3 myth for the kt jet-finder",
+                "size": 5
+              }
+            ],
+            "cost_usd": 0.00097
+          }
+        },
+        {
+          "id": "q12",
+          "gold": 1293923,
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "query": "t automated computation of tree-level and next-to-leading order differential cross sections, and their matching to parton shower simulations",
+                "size": 5
+              },
+              {
+                "question": "MadGraph5_aMC@NLO automated framework NLO QCD cross sections matched to parton showers",
+                "size": 5
+              }
+            ],
+            "cost_usd": 0.00134
+          }
+        },
+        {
+          "id": "q13",
+          "gold": 1321709,
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "query": "t An Introduction to PYTHIA 8.2",
+                "size": 5
+              },
+              {
+                "question": "overview of PYTHIA 8.2 general purpose Monte Carlo event generator",
+                "size": 5
+              }
+            ],
+            "cost_usd": 0.00116
+          }
+        },
+        {
+          "id": "q14",
+          "gold": 711505,
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "question": "holographic entanglement entropy equals area of minimal surface in the bulk anti-de Sitter",
+                "size": 8
+              },
+              {
+                "query": "t Holographic Derivation of Entanglement Entropy from AdS/CFT",
+                "size": 5
+              },
+              {
+                "query": "t Aspects of Holographic Entanglement Entropy",
+                "size": 3
+              }
+            ],
+            "cost_usd": 0.00173
+          }
+        },
+        {
+          "id": "q15",
+          "gold": 612481,
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "query": "arxiv:hep-th/0301240",
+                "size": 3
+              },
+              {
+                "question": "KKLT de Sitter vacua in string theory metastable positive cosmological constant stabilized moduli",
+                "size": 5
+              }
+            ],
+            "cost_usd": 0.0012
+          }
+        },
+        {
+          "id": "q16",
+          "gold": 374836,
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "query": "t Electric-magnetic duality, monopole condensation, and confinement in N=2 supersymmetric Yang-Mills theory",
+                "size": 5
+              },
+              {
+                "query": "arxiv:hep-th/9407087",
+                "size": 3
+              }
+            ],
+            "cost_usd": 0.00105
+          }
+        },
+        {
+          "id": "q17",
+          "gold": 1382595,
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "query": "t Observation of J/psi p resonances consistent with pentaquark states in Lambda_b0 -> J/psi K- p decays",
+                "size": 5
+              },
+              {
+                "query": "cn LHCb and t pentaquark and t Lambda_b",
+                "size": 10,
+                "sort": "mostcited"
+              },
+              {
+                "question": "LHCb observation of J/psi p resonances consistent with pentaquark states in Lambda_b decays",
+                "size": 8
+              }
+            ],
+            "cost_usd": 0.00168
+          }
+        },
+        {
+          "id": "q18",
+          "gold": 1856627,
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "query": "t Measurement of the Positive Muon Anomalous Magnetic Moment and cn Muon g-2",
+                "size": 10,
+                "sort": "mostcited"
+              },
+              {
+                "query": "t Measurement of the Positive Muon Anomalous Magnetic Moment to 127 ppb",
+                "size": 5
+              }
+            ],
+            "cost_usd": 0.00194
+          }
+        },
+        {
+          "id": "q19",
+          "gold": 393570,
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "question": "strong coupling dualities relating the different superstring theories and eleven dimensional supergravity",
+                "size": 8
+              },
+              {
+                "query": "t Unity of superstring dualities",
+                "size": 5
+              }
+            ],
+            "cost_usd": 0.00142
+          }
+        },
+        {
+          "id": "q20",
+          "gold": 1325552,
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "query": "t Parton distributions for the LHC Run II and a NNPDF3.0",
+                "size": 5
+              },
+              {
+                "question": "NNPDF 3.0 neural network parton distributions for the LHC Run II",
+                "size": 5
+              }
+            ],
+            "cost_usd": 0.00121
+          }
+        },
+        {
+          "id": "q21",
+          "gold": 712925,
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "query": "arxiv:hep-ph/0603175",
+                "size": 3
+              },
+              {
+                "query": "t \"PYTHIA 6.4 physics and manual\"",
+                "size": 5
+              }
+            ],
+            "cost_usd": 0.00105
+          }
+        },
+        {
+          "id": "q22",
+          "gold": 470671,
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "query": "t Observational Evidence from Supernovae for an Accelerating Universe and a Cosmological Constant",
+                "size": 5
+              },
+              {
+                "query": "arxiv:astro-ph/9805201",
+                "size": 3
+              },
+              {
+                "query": "t Measurements of Omega and Lambda from 42 High-Redshift Supernovae",
+                "size": 3
+              }
+            ],
+            "cost_usd": 0.00132
+          }
+        },
+        {
+          "id": "q23",
+          "gold": 484837,
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "query": "t Measurements of Omega and Lambda from 42 high-redshift supernovae",
+                "size": 5
+              },
+              {
+                "question": "Supernova Cosmology Project measurement of matter density and dark energy from distant supernovae",
+                "size": 8
+              }
+            ],
+            "cost_usd": 0.00138
+          }
+        },
+        {
+          "id": "q24",
+          "gold": 581996,
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "query": "t New generation of parton distributions with uncertainties from global QCD analysis",
+                "size": 5
+              },
+              {
+                "question": "CTEQ6 global fit of parton distribution functions with uncertainty analysis Hessian eigenvector sets",
+                "size": 5
+              }
+            ],
+            "cost_usd": 0.00136
+          }
+        },
+        {
+          "id": "q25",
+          "gold": 472711,
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "query": "t Evidence for oscillation of atmospheric neutrinos and cn Super-Kamiokande",
+                "size": 5
+              },
+              {
+                "question": "Super-Kamiokande evidence for oscillation of atmospheric muon neutrinos",
+                "size": 5
+              }
+            ],
+            "cost_usd": 0.00124
+          }
+        },
+        {
+          "id": "q26",
+          "gold": 585723,
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "query": "t Direct evidence for neutrino flavor transformation from neutral-current interactions in the Sudbury Neutrino Observatory",
+                "size": 5
+              },
+              {
+                "question": "SNO neutral current interactions deuterium direct evidence solar electron neutrinos flavor transformation",
+                "size": 5
+              }
+            ],
+            "cost_usd": 0.00133
+          }
+        },
+        {
+          "id": "q27",
+          "gold": 1356276,
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "query": "t Combined Measurement of the Higgs Boson Mass in pp Collisions at 7 and 8 TeV with the ATLAS and CMS Experiments",
+                "size": 5
+              },
+              {
+                "question": "joint ATLAS and CMS combined measurement of the Higgs boson mass from Run 1 data at 7 and 8 TeV",
+                "size": 5
+              },
+              {
+                "identifier": "1503.07589"
+              },
+              {
+                "query": "t \"Higgs boson mass\" and cn atlas and cn cms and date 2015",
+                "size": 10
+              }
+            ],
+            "cost_usd": 0.00163
+          }
+        },
+        {
+          "id": "q28",
+          "gold": 400204,
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "query": "t Dirichlet-branes and Ramond-Ramond charges",
+                "size": 5
+              },
+              {
+                "question": "D-branes carry the Ramond-Ramond charges in type II string theory",
+                "size": 5
+              }
+            ],
+            "cost_usd": 0.00123
+          }
+        },
+        {
+          "id": "q29",
+          "gold": 451356,
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "question": "toroidal compactification of the matrix model and noncommutative tori",
+                "size": 10
+              },
+              {
+                "query": "t Noncommutative geometry and matrix theory: compactification on tori",
+                "size": 5
+              }
+            ],
+            "cost_usd": 0.00131
+          }
+        },
+        {
+          "id": "q30",
+          "gold": 25808,
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "question": "review of proofs of factorization theorems for hard scattering processes in perturbative QCD",
+                "size": 10
+              },
+              {
+                "query": "t Factorization of hard processes in QCD a cn Collins",
+                "size": 5
+              },
+              {
+                "query": "arxiv:hep-ph/0409313",
+                "size": 3
+              },
+              {
+                "query": "t factorization hard processes QCD and a Sterman and a Collins",
+                "size": 10
+              }
+            ],
+            "cost_usd": 0.00169
+          }
+        },
+        {
+          "id": "q31",
+          "gold": 505947,
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "query": "t String theory and noncommutative geometry",
+                "size": 5
+              },
+              {
+                "question": "Seiberg Witten map between noncommutative and ordinary gauge theory from open strings in a B field",
+                "size": 5
+              }
+            ],
+            "cost_usd": 0.00135
+          }
+        },
+        {
+          "id": "q32",
+          "gold": 764903,
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "query": "t A Brief Introduction to PYTHIA 8.1",
+                "size": 5
+              }
+            ],
+            "cost_usd": 0.00091
+          }
+        },
+        {
+          "id": "q33",
+          "gold": 803708,
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "query": "t Event generation with SHERPA 1.1",
+                "size": 5
+              },
+              {
+                "query": "arxiv:0811.4622",
+                "size": 3
+              }
+            ],
+            "cost_usd": 0.00106
+          }
+        },
+        {
+          "id": "q34",
+          "gold": 1407976,
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "query": "t Herwig 7 release note",
+                "size": 10
+              },
+              {
+                "question": "Herwig 7 release note, successor of Herwig++ event generator",
+                "size": 10
+              }
+            ],
+            "cost_usd": 0.00131
+          }
+        },
+        {
+          "id": "q35",
+          "gold": 845712,
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "query": "t A general framework for implementing NLO calculations in shower Monte Carlo programs: the POWHEG BOX",
+                "size": 5
+              },
+              {
+                "question": "POWHEG BOX framework for implementing NLO calculations in shower Monte Carlo programs",
+                "size": 5
+              }
+            ],
+            "cost_usd": 0.00112
+          }
+        },
+        {
+          "id": "q36",
+          "gold": 659055,
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "query": "arxiv:hep-ph/0409146",
+                "size": 3
+              },
+              {
+                "question": "Nason new method for combining NLO QCD calculations with shower Monte Carlo algorithms without negative weights",
+                "size": 5
+              }
+            ],
+            "cost_usd": 0.00124
+          }
+        },
+        {
+          "id": "q37",
+          "gold": 860907,
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "query": "t Asymptotic formulae for likelihood-based tests of new physics",
+                "size": 5
+              },
+              {
+                "query": "arxiv:1007.1727",
+                "size": 3
+              }
+            ],
+            "cost_usd": 0.00105
+          }
+        },
+        {
+          "id": "q38",
+          "gold": 454197,
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "query": "t Unified approach to the classical statistical analysis of small signals",
+                "size": 5
+              },
+              {
+                "question": "Feldman Cousins unified frequentist confidence intervals for small signals",
+                "size": 5
+              }
+            ],
+            "cost_usd": 0.00124
+          }
+        },
+        {
+          "id": "q39",
+          "gold": 499969,
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "query": "t Large N field theories, string theory and gravity",
+                "size": 5
+              }
+            ],
+            "cost_usd": 0.00113
+          }
+        },
+        {
+          "id": "q40",
+          "gold": 716307,
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "query": "t Aspects of holographic entanglement entropy",
+                "size": 5
+              },
+              {
+                "query": "t Holographic derivation of entanglement entropy from AdS/CFT",
+                "size": 5
+              }
+            ],
+            "cost_usd": 0.00142
+          }
+        },
+        {
+          "id": "q41",
+          "gold": 1236661,
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "query": "arxiv:1306.0533",
+                "size": 3
+              },
+              {
+                "question": "ER = EPR: entangled black holes connected by Einstein-Rosen bridges",
+                "size": 5
+              }
+            ],
+            "cost_usd": 0.00119
+          }
+        },
+        {
+          "id": "q42",
+          "gold": 1122534,
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "query": "arxiv:1207.3123",
+                "size": 3
+              },
+              {
+                "question": "infalling observer encounters firewall at horizon of old black hole after Page time, complementarity violation",
+                "size": 8
+              }
+            ],
+            "cost_usd": 0.00135
+          }
+        },
+        {
+          "id": "q43",
+          "gold": 613135,
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "query": "t First Year Wilkinson Microwave Anisotropy Probe Observations: Determination of Cosmological Parameters",
+                "size": 10
+              },
+              {
+                "question": "cosmological parameters from the first year of WMAP data",
+                "size": 10
+              }
+            ],
+            "cost_usd": 0.0014
+          }
+        },
+        {
+          "id": "q44",
+          "gold": 1343079,
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "query": "t Planck 2015 results XIII cosmological parameters",
+                "size": 10
+              },
+              {
+                "question": "Planck 2015 cosmological parameter constraints from CMB temperature, polarization and lensing",
+                "size": 10
+              }
+            ],
+            "cost_usd": 0.00155
+          }
+        },
+        {
+          "id": "q45",
+          "gold": 648746,
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "query": "t Particle dark matter: evidence, candidates and constraints a Bertone a Hooper a Silk",
+                "size": 5
+              },
+              {
+                "query": "arxiv:hep-ph/0404175",
+                "size": 5
+              },
+              {
+                "question": "review of particle dark matter evidence, candidates and experimental constraints Bertone Hooper Silk",
+                "size": 5
+              }
+            ],
+            "cost_usd": 0.00128
+          }
+        },
+        {
+          "id": "q46",
+          "gold": 396520,
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "query": "t Supersymmetric dark matter and a Jungman Kamionkowski Griest",
+                "size": 5
+              },
+              {
+                "question": "Supersymmetric dark matter review neutralino relic density Jungman Kamionkowski Griest",
+                "size": 5
+              },
+              {
+                "query": "arxiv:hep-ph/9506380",
+                "size": 3
+              }
+            ],
+            "cost_usd": 0.0014
+          }
+        },
+        {
+          "id": "q47",
+          "gold": 448462,
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "query": "t A Supersymmetry Primer and a Martin",
+                "size": 5
+              },
+              {
+                "query": "arxiv:hep-ph/9709356",
+                "size": 3
+              }
+            ],
+            "cost_usd": 0.00098
+          }
+        },
+        {
+          "id": "q48",
+          "gold": 1257621,
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "query": "t FeynRules 2.0 - A complete toolbox for tree-level phenomenology",
+                "size": 5
+              },
+              {
+                "question": "FeynRules 2.0 toolbox to implement new physics models and derive Feynman rules",
+                "size": 5
+              }
+            ],
+            "cost_usd": 0.00124
+          }
+        },
+        {
+          "id": "q49",
+          "gold": 922834,
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "query": "t UFO - The Universal FeynRules Output",
+                "size": 5
+              },
+              {
+                "question": "UFO model format for exporting Lagrangians to matrix element generators",
+                "size": 5
+              }
+            ],
+            "cost_usd": 0.00145
+          }
+        },
+        {
+          "id": "q50",
+          "gold": 415163,
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "query": "arxiv:hep-th/9601029",
+                "size": 3
+              },
+              {
+                "question": "counting D-brane microstates reproduces the Bekenstein-Hawking entropy of extremal black holes",
+                "size": 5
+              }
+            ],
+            "cost_usd": 0.00122
+          }
+        },
+        {
+          "id": "q51",
+          "gold": 424266,
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "query": "t M theory as a matrix model: a conjecture",
+                "size": 5
+              },
+              {
+                "question": "M theory in infinite momentum frame is matrix quantum mechanics of D0 branes conjecture",
+                "size": 5
+              }
+            ],
+            "cost_usd": 0.00113
+          }
+        },
+        {
+          "id": "q52",
+          "gold": 1469395,
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "query": "t GW151226: Observation of gravitational waves from a 22-solar-mass binary black hole coalescence",
+                "size": 5
+              },
+              {
+                "question": "second observation of gravitational waves from a 22 solar mass binary black hole coalescence LIGO",
+                "size": 5
+              }
+            ],
+            "cost_usd": 0.00164
+          }
+        },
+        {
+          "id": "q53",
+          "gold": 1630824,
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "query": "t GW170817: Observation of Gravitational Waves from a Binary Neutron Star Inspiral",
+                "size": 5
+              },
+              {
+                "question": "observation of gravitational waves from a binary neutron star inspiral",
+                "size": 8
+              },
+              {
+                "query": "arxiv:1710.05832",
+                "size": 5
+              },
+              {
+                "query": "t \"GW170817\" and cn LIGO and t Binary Neutron Star Inspiral and date 2017",
+                "size": 10
+              }
+            ],
+            "cost_usd": 0.00252
+          }
+        },
+        {
+          "id": "q54",
+          "gold": 450836,
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "query": "a Maldacena, J and a Strominger, A and a Witten, E and t black hole entropy in M-theory",
+                "size": 5
+              },
+              {
+                "query": "arxiv:hep-th/9711053",
+                "size": 3
+              }
+            ],
+            "cost_usd": 0.00099
+          }
+        },
+        {
+          "id": "q55",
+          "gold": 593054,
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "query": "t MadEvent: automatic event generation with MadGraph",
+                "size": 10
+              },
+              {
+                "question": "MadEvent automatic event generation built on MadGraph",
+                "size": 5
+              }
+            ],
+            "cost_usd": 0.00126
+          }
+        },
+        {
+          "id": "q56",
+          "gold": 815772,
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "question": "lecture notes applying gauge/gravity duality to condensed matter systems",
+                "size": 10
+              },
+              {
+                "query": "t \"lectures\" and t holographic and t condensed matter",
+                "size": 10
+              },
+              {
+                "query": "t \"holographic superfluidity and superconductivity\" or t \"holographic duality with a view toward many-body physics\" or t \"lectures on holographic\" ",
+                "size": 10
+              }
+            ],
+            "cost_usd": 0.00243
+          }
+        },
+        {
+          "id": "q57",
+          "gold": 883176,
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "query": "t Handbook of LHC Higgs Cross Sections: 1. Inclusive Observables",
+                "size": 5
+              }
+            ],
+            "cost_usd": 0.0012
+          }
+        },
+        {
+          "id": "q58",
+          "gold": 32290,
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "query": "t Black hole in three-dimensional spacetime",
+                "size": 5
+              },
+              {
+                "question": "BTZ black hole solution in 2+1 dimensional gravity with negative cosmological constant",
+                "size": 5
+              },
+              {
+                "query": "arxiv:hep-th/9204099",
+                "size": 3
+              },
+              {
+                "query": "a Banados, M. and a Teitelboim, C. and a Zanelli, J. and t black hole three-dimensional",
+                "size": 5
+              }
+            ],
+            "cost_usd": 0.00172
+          }
+        },
+        {
+          "id": "q59",
+          "gold": 36137,
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "query": "t Dimensional Reduction in Quantum Gravity a 't Hooft",
+                "size": 5
+              },
+              {
+                "question": "'t Hooft dimensional reduction in quantum gravity holographic principle origin",
+                "size": 5
+              },
+              {
+                "identifier": "gr-qc/9310026"
+              },
+              {
+                "query": "t Dimensional reduction in quantum gravity",
+                "size": 5
+              }
+            ],
+            "cost_usd": 0.00168
+          }
+        },
+        {
+          "id": "q60",
+          "gold": 376940,
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "query": "t \"The World as a Hologram\" and a Susskind",
+                "size": 5
+              }
+            ],
+            "cost_usd": 0.0009
+          }
+        }
+      ]
+    },
+    "longtail": {
+      "n": 40,
+      "summary": {
+        "single_call": {
+          "R@1": 0.7,
+          "R@5": 0.85,
+          "R@10": 0.85,
+          "MRR@10": 0.763,
+          "MRR@10_ci95": [
+            0.646,
+            0.875
+          ]
+        },
+        "agent_B": {
+          "R@1": 0.825,
+          "R@5": 0.9,
+          "R@10": 0.9,
+          "MRR@10": 0.858,
+          "MRR@10_ci95": [
+            0.75,
+            0.95
+          ],
+          "mean_tool_calls": 2.5,
+          "mean_cost_usd": 0.00168,
+          "median_latency_s": 5.6,
+          "outcomes": {
+            "submitted": 40
+          }
+        }
+      },
+      "paired_permutation_p_mrr": {
+        "agent_B vs single_call": 0.0459
+      },
+      "per_query": [
+        {
+          "id": "l01",
+          "gold": 1478377,
+          "B": {
+            "rank": null,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "question": "dark matter freeze-out driven by conversion into heavier mediators that later decay, instead of annihilation into standard model particles",
+                "size": 10
+              },
+              {
+                "query": "t conversion-driven freeze-out",
+                "size": 10
+              }
+            ],
+            "cost_usd": 0.00174
+          }
+        },
+        {
+          "id": "l02",
+          "gold": 1796172,
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "question": "six-point correlators in 2d CFT at large central charge and quantum chaos",
+                "size": 10
+              },
+              {
+                "query": "t six-point function 2d CFT chaos large central charge",
+                "size": 10
+              }
+            ],
+            "cost_usd": 0.00151
+          }
+        },
+        {
+          "id": "l03",
+          "gold": 1759219,
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "question": "lensing magnification bias effect on tangential shear and halo mass estimates around galaxies",
+                "size": 10
+              },
+              {
+                "query": "t magnification bias galaxy-galaxy lensing tangential shear",
+                "size": 10
+              }
+            ],
+            "cost_usd": 0.0015
+          }
+        },
+        {
+          "id": "l04",
+          "gold": 1724102,
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "question": "introduction to homotopy theory, L-infinity algebras and generalised cohomology as clues to non-perturbative string theory",
+                "size": 10
+              },
+              {
+                "query": "t homotopy theory L-infinity generalised cohomology non-perturbative string theory",
+                "size": 10
+              }
+            ],
+            "cost_usd": 0.00141
+          }
+        },
+        {
+          "id": "l05",
+          "gold": 1502136,
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "question": "fluctuations of a vacuum energy cancelling field behave as pressureless cold dark matter",
+                "size": 10
+              },
+              {
+                "query": "t vacuum energy sequestering dark matter fluctuations cold dark matter",
+                "size": 10
+              },
+              {
+                "query": "a Klinkhamer and t q-field dark matter",
+                "size": 10
+              },
+              {
+                "question": "q-theory Planck-scale vacuum energy cancellation perturbation of q-field as dark matter",
+                "size": 5
+              }
+            ],
+            "cost_usd": 0.00191
+          }
+        },
+        {
+          "id": "l06",
+          "gold": 1697170,
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "question": "composite fermion trial states for Fermi sea at filling one half and Berry phase",
+                "size": 10
+              },
+              {
+                "query": "t composite fermion Fermi sea Berry phase half filling",
+                "size": 10
+              }
+            ],
+            "cost_usd": 0.00155
+          }
+        },
+        {
+          "id": "l07",
+          "gold": 1351172,
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "question": "why luminous quasars with weak emission lines are X-ray weak, Chandra observations",
+                "size": 10
+              },
+              {
+                "query": "t weak emission line quasars X-ray weak Chandra",
+                "size": 10
+              }
+            ],
+            "cost_usd": 0.00164
+          }
+        },
+        {
+          "id": "l08",
+          "gold": 1610040,
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "question": "boundary K matrices for Baxter's Q operator from augmented Onsager algebra Ito Terwilliger",
+                "size": 10
+              },
+              {
+                "query": "t augmented Onsager algebra and boundary Q operator",
+                "size": 10
+              }
+            ],
+            "cost_usd": 0.00146
+          }
+        },
+        {
+          "id": "l09",
+          "gold": 1810935,
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "question": "Schwinger-Keldysh effective action for Galilean invariant fluids from null reduction of relativistic theory one dimension higher",
+                "size": 10
+              },
+              {
+                "query": "t Schwinger-Keldysh effective field theory Galilean fluids null reduction",
+                "size": 10
+              }
+            ],
+            "cost_usd": 0.00127
+          }
+        },
+        {
+          "id": "l10",
+          "gold": 1364873,
+          "B": {
+            "rank": 2,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "question": "electric field wormhole makes black hole spacetime geodesically complete despite curvature singularity",
+                "size": 10
+              },
+              {
+                "query": "t geodesically complete black holes electric field wormhole",
+                "size": 10
+              }
+            ],
+            "cost_usd": 0.00134
+          }
+        },
+        {
+          "id": "l11",
+          "gold": 1788090,
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "question": "bosons coupled to dynamical Z2 gauge field in one dimension, fractional solitons away from commensurate filling",
+                "size": 10
+              },
+              {
+                "query": "t fractional solitons Z2 gauge theory bosons one dimension",
+                "size": 10
+              }
+            ],
+            "cost_usd": 0.00144
+          }
+        },
+        {
+          "id": "l12",
+          "gold": 1863059,
+          "B": {
+            "rank": 3,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "question": "early time expansion of color glass condensate gluon field right after heavy ion collision",
+                "size": 10
+              },
+              {
+                "query": "t early time dynamics color glass condensate gluon field heavy ion collision expansion",
+                "size": 10,
+                "sort": "mostcited"
+              },
+              {
+                "query": "t glasma early times expansion in proper time color glass condensate analytic",
+                "size": 10
+              },
+              {
+                "query": "a Chen and Fries glasma energy momentum tensor expansion tau",
+                "size": 10
+              },
+              {
+                "recid": 1863059,
+                "size": 25
+              },
+              {
+                "question": "analytic expansion of the classical gluon fields in proper time after nucleus-nucleus collision, glasma initial conditions",
+                "size": 10
+              },
+              {
+                "query": "a Fries and a Kapusta and t gluon field early time nuclear collision energy momentum tensor",
+                "size": 10
+              },
+              {
+                "query": "Chen Fries Kapusta Li gluon field energy flow early times Yang-Mills analytic",
+                "size": 10
+              }
+            ],
+            "cost_usd": 0.00567
+          }
+        },
+        {
+          "id": "l13",
+          "gold": 1679410,
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "question": "free fermions one dimension relaxation after quench generalized Gibbs ensemble hydrodynamic phase space",
+                "size": 10
+              },
+              {
+                "query": "t hydrodynamic phase space free fermions quench generalized Gibbs ensemble",
+                "size": 10
+              },
+              {
+                "query": "a Mandal and t phase space hydrodynamics quench Fermi gas",
+                "size": 10
+              }
+            ],
+            "cost_usd": 0.00173
+          }
+        },
+        {
+          "id": "l14",
+          "gold": 1726349,
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "question": "positivity of Wald entropy corrections for charged rotating black holes constrains higher derivative operators",
+                "size": 10
+              },
+              {
+                "query": "t positivity of Wald entropy charged rotating black holes higher derivative",
+                "size": 10
+              }
+            ],
+            "cost_usd": 0.00134
+          }
+        },
+        {
+          "id": "l15",
+          "gold": 1683162,
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "question": "seismometer array at Hanford to subtract gravity gradient noise in gravitational wave detectors",
+                "size": 10
+              },
+              {
+                "query": "t Newtonian noise seismometer array Hanford",
+                "size": 10
+              }
+            ],
+            "cost_usd": 0.00149
+          }
+        },
+        {
+          "id": "l16",
+          "gold": 1812805,
+          "B": {
+            "rank": 2,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "question": "kinematic algebra of self-dual Yang-Mills mapped to Plebanski equation of self-dual gravity double copy",
+                "size": 10
+              },
+              {
+                "query": "t kinematic algebra self-dual Yang-Mills Plebanski double copy",
+                "size": 10
+              }
+            ],
+            "cost_usd": 0.00156
+          }
+        },
+        {
+          "id": "l17",
+          "gold": 1481166,
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "question": "search strategy for primordial black hole MACHO dark matter of tens of solar masses",
+                "size": 10
+              },
+              {
+                "query": "t primordial black holes tens of solar masses dark matter search strategy",
+                "size": 10
+              },
+              {
+                "question": "detecting MACHO dark matter with masses of order 10 to 100 solar masses using microlensing or lensing of stars or gravitational waves",
+                "size": 10
+              },
+              {
+                "question": "proposed search for massive compact halo objects of tens of solar masses as dark matter",
+                "size": 10
+              },
+              {
+                "identifier": "1608.04297"
+              },
+              {
+                "question": "strategy to test whether primordial black holes of tens of solar masses constitute dark matter, observational signatures and detection",
+                "size": 10,
+                "compact": true
+              }
+            ],
+            "cost_usd": 0.00326
+          }
+        },
+        {
+          "id": "l18",
+          "gold": 1836725,
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "question": "machine learning random catalogues to remove observational systematics from KiDS angular clustering",
+                "size": 10
+              },
+              {
+                "query": "t random catalogues machine learning KiDS clustering systematics",
+                "size": 10
+              }
+            ],
+            "cost_usd": 0.00141
+          }
+        },
+        {
+          "id": "l19",
+          "gold": 1646668,
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "question": "gravitational Chern-Simons anomaly on manifolds with boundary using bag boundary conditions",
+                "size": 10
+              },
+              {
+                "query": "t gravitational Chern-Simons and t bag boundary condition and t anomaly",
+                "size": 10
+              }
+            ],
+            "cost_usd": 0.00127
+          }
+        },
+        {
+          "id": "l20",
+          "gold": 1706008,
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "question": "simulations showing Galactic stellar disk potential destroys dark matter subhalos",
+                "size": 10
+              },
+              {
+                "query": "t \"disk shocking\" subhalos destruction",
+                "size": 10
+              }
+            ],
+            "cost_usd": 0.0016
+          }
+        },
+        {
+          "id": "l21",
+          "gold": 1818907,
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "question": "detecting the 21-cm signature of first molecular cooling galaxies in minihalos with radio interferometers",
+                "size": 10
+              },
+              {
+                "query": "t 21-cm minihalos molecular cooling galaxies interferometers",
+                "size": 10
+              },
+              {
+                "query": "t \"tale of two sites\" minihalo",
+                "size": 5
+              }
+            ],
+            "cost_usd": 0.00182
+          }
+        },
+        {
+          "id": "l22",
+          "gold": 1870518,
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "question": "Upsilon(10753) as S-D mixed bottomonium state and transitions with eta or omega emission",
+                "size": 10,
+                "pool": 50
+              },
+              {
+                "query": "t Upsilon(10753) and t mixing bottomonium and (eta or omega) transitions",
+                "size": 10
+              }
+            ],
+            "cost_usd": 0.0015
+          }
+        },
+        {
+          "id": "l23",
+          "gold": 1369310,
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "question": "rise time of hydrogen-rich core-collapse supernovae to peak light SDSS and SNLS",
+                "size": 8
+              },
+              {
+                "identifier": "1505.02988"
+              }
+            ],
+            "cost_usd": 0.00157
+          }
+        },
+        {
+          "id": "l24",
+          "gold": 1402620,
+          "B": {
+            "rank": null,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "question": "dark matter produced nonthermally from decays of a long-lived particle instead of WIMP freeze-out",
+                "size": 10,
+                "prefer_influential": true
+              },
+              {
+                "query": "t nonthermal dark matter and t long-lived particle decay",
+                "size": 10,
+                "sort": "mostcited"
+              },
+              {
+                "query": "t non-thermal dark matter from late decay of heavy particle",
+                "size": 15,
+                "sort": "mostcited"
+              },
+              {
+                "question": "relic abundance of dark matter generated by decay of a long-lived scalar or modulus, not thermal freeze-out, nonthermal production of WIMPs",
+                "size": 10,
+                "prefer_influential": true
+              },
+              {
+                "query": "t wino cold dark matter from anomaly-mediated supersymmetry breaking",
+                "size": 5
+              },
+              {
+                "query": "t neutralino right cold dark matter abundance almost any supersymmetric model",
+                "size": 5
+              },
+              {
+                "query": "t nonthermal dark matter and the moduli problem in string frameworks",
+                "size": 5
+              },
+              {
+                "query": "t nonthermal production of WIMP dark matter from moduli decay",
+                "size": 10,
+                "sort": "mostcited"
+              }
+            ],
+            "cost_usd": 0.00331
+          }
+        },
+        {
+          "id": "l25",
+          "gold": 1439739,
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "question": "Mopra molecular gas survey of the cloud north of TeV pulsar wind nebula HESS J1825-137",
+                "size": 8
+              },
+              {
+                "query": "t \"J1825\" and t molecular cloud Mopra",
+                "size": 8
+              }
+            ],
+            "cost_usd": 0.00136
+          }
+        },
+        {
+          "id": "l26",
+          "gold": 1479184,
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "question": "T-branes described as a single curved Dp-brane when Higgs vevs exceed the string scale",
+                "size": 8
+              },
+              {
+                "query": "t T-branes and geometry",
+                "size": 5
+              }
+            ],
+            "cost_usd": 0.00155
+          }
+        },
+        {
+          "id": "l27",
+          "gold": 1803632,
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "question": "numerical relativity simulations of charged black hole binary mergers and constraint on charge from GW150914",
+                "size": 10
+              },
+              {
+                "query": "t charged black hole binary merger numerical relativity GW150914 charge",
+                "size": 10
+              }
+            ],
+            "cost_usd": 0.00145
+          }
+        },
+        {
+          "id": "l28",
+          "gold": 1774926,
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "question": "phonon self-energy from magnetoelastic coupling to Majorana fermions and fluxes in the honeycomb Kitaev model",
+                "size": 10
+              },
+              {
+                "query": "t phonon self-energy Majorana fermions Kitaev magnetoelastic",
+                "size": 10
+              }
+            ],
+            "cost_usd": 0.00136
+          }
+        },
+        {
+          "id": "l29",
+          "gold": 1726486,
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "question": "xenon dark matter detector with intense neutrino source to test non-standard neutrino-electron couplings",
+                "size": 10
+              },
+              {
+                "query": "t neutrino electron scattering xenon dark matter detector intense source non-standard interactions",
+                "size": 10
+              }
+            ],
+            "cost_usd": 0.00147
+          }
+        },
+        {
+          "id": "l30",
+          "gold": 2768211,
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "question": "review of multipartite quantum key distribution protocols for networks",
+                "size": 10
+              },
+              {
+                "query": "t multipartite quantum key distribution review",
+                "size": 10
+              }
+            ],
+            "cost_usd": 0.00131
+          }
+        },
+        {
+          "id": "l31",
+          "gold": 1618317,
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "question": "fast radio burst dispersion measures used to determine the distance-redshift relation",
+                "size": 10
+              },
+              {
+                "query": "t fast radio bursts and distance redshift relation dispersion measure",
+                "size": 10
+              }
+            ],
+            "cost_usd": 0.00144
+          }
+        },
+        {
+          "id": "l32",
+          "gold": 1468622,
+          "B": {
+            "rank": null,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "question": "weak lensing calibrated scaling relations between X-ray observables and mass of galaxy clusters",
+                "size": 10,
+                "prefer_influential": true
+              },
+              {
+                "query": "t weak lensing calibration of X-ray scaling relations galaxy clusters",
+                "size": 10,
+                "sort": "mostcited"
+              }
+            ],
+            "cost_usd": 0.00172
+          }
+        },
+        {
+          "id": "l33",
+          "gold": 1873396,
+          "B": {
+            "rank": null,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "question": "large spin asymptotics of EPRL spin foam vertex amplitude including timelike tetrahedra",
+                "size": 8
+              },
+              {
+                "query": "t large spin asymptotics EPRL vertex amplitude timelike",
+                "size": 8
+              }
+            ],
+            "cost_usd": 0.0014
+          }
+        },
+        {
+          "id": "l34",
+          "gold": 1670533,
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "question": "electron electric dipole moment search using barium monofluoride molecules with Stark deceleration and laser cooling",
+                "size": 10
+              },
+              {
+                "query": "t BaF electron EDM Stark deceleration laser cooling",
+                "size": 10
+              }
+            ],
+            "cost_usd": 0.00145
+          }
+        },
+        {
+          "id": "l35",
+          "gold": 1495825,
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "question": "polarization predictions for gamma-ray burst prompt emission from a dissipative photosphere",
+                "size": 10
+              },
+              {
+                "query": "t polarization gamma-ray burst prompt emission dissipative photosphere",
+                "size": 10
+              }
+            ],
+            "cost_usd": 0.00137
+          }
+        },
+        {
+          "id": "l36",
+          "gold": 1427764,
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "question": "higher spin conformal supergravity prepotentials and super-Cotton tensors in 3D N=2 superspace",
+                "size": 10
+              },
+              {
+                "query": "t \"super-Cotton\" and t N=2 and t superspace and t conformal higher spin",
+                "size": 10
+              }
+            ],
+            "cost_usd": 0.00141
+          }
+        },
+        {
+          "id": "l37",
+          "gold": 1758033,
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "question": "long range forces from two-particle loop exchange in a dark sector with conformal sector or emergent degrees of freedom",
+                "size": 10
+              },
+              {
+                "query": "t long range forces dark sector conformal emergent degrees of freedom two particle exchange",
+                "size": 10
+              }
+            ],
+            "cost_usd": 0.00135
+          }
+        },
+        {
+          "id": "l38",
+          "gold": 1697529,
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "question": "solar neutrino electron scattering in multi-ton xenon detectors constraints on neutrino decay and neutrino magnetic moment",
+                "size": 10
+              },
+              {
+                "query": "t solar neutrinos xenon neutrino decay magnetic moment electron recoil",
+                "size": 10
+              }
+            ],
+            "cost_usd": 0.00146
+          }
+        },
+        {
+          "id": "l39",
+          "gold": 1681503,
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "question": "strongly lensed repeating fast radio bursts to measure cosmic expansion in real time redshift drift",
+                "size": 10
+              },
+              {
+                "query": "t lensed repeating fast radio bursts cosmic expansion",
+                "size": 10
+              }
+            ],
+            "cost_usd": 0.00141
+          }
+        },
+        {
+          "id": "l40",
+          "gold": 2129847,
+          "B": {
+            "rank": 1,
+            "outcome": "submitted",
+            "queries": [
+              {
+                "question": "quantum scars do not prevent eigenstates from being ergodic in chaotic systems",
+                "size": 10
+              },
+              {
+                "query": "t scars and ergodicity of eigenstates in chaotic systems",
+                "size": 10
+              }
+            ],
+            "cost_usd": 0.00132
+          }
+        }
+      ]
+    }
+  },
+  "total_cost_usd": 0.1475
+}

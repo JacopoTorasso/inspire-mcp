@@ -25,6 +25,10 @@ All notable changes. Versions follow [semantic versioning](https://semver.org).
   (`llm_rerank.py`). Training code for a physics cross-encoder in `train/`: the fine-tuned models
   beat the default on the development sets but not on the test sets, so the default is unchanged
   (docs/evaluation.md).
+* Evaluation: `agent_eval.py --mcp` runs the agent on the real server in process, and
+  `compare_runs.py` compares groups of runs. Six attempts to make the tools cheaper for an assistant
+  (ranked results, shorter semantic_search results, compact JSON, smaller tool schemas) were measured
+  against a criterion fixed beforehand; none met it, so the tools are unchanged (docs/evaluation.md).
 
 ## 0.5.3
 

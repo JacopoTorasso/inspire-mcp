@@ -233,6 +233,45 @@ carry over to new questions: the index is kept as an experimental option, off by
 described as an improvement. More candidates in the pool are not enough: neither the cross-encoder nor the
 agent turned them into better answers on new questions.
 
+## Agent efficiency: can smaller tool output make an assistant cheaper?
+
+The question here is not accuracy but what an assistant spends to get it. `eval/agent_eval.py --mcp` has a
+Claude Haiku agent use the real server in process (its 18 tools, their descriptions, the instructions, and
+results exactly as an MCP client receives them), on the 164 development questions (famous, longtail,
+citedev). **Criterion, fixed before any variant (26/11/2026):** a change is kept if tool calls per question
+drop by 20% or cost per question (a proxy for tokens) by 25%, with pooled MRR@10 down by at most 0.03, two
+runs per configuration. `eval/compare_runs.py` applies it: per-question means over the runs, paired
+permutation p, bootstrap 95% intervals over questions.
+
+Baseline (two runs): MRR 0.701, 3.67 tool calls and $0.00299 per question. Each variant is two runs,
+compared with the baseline; variants 3 to 6 build on the one before.
+
+| variant | calls | cost | MRR [95% CI] | citedev MRR |
+|---|---|---|---|---|
+| 1. instructions: results are ranked, answer when one fits | -11.0% | +1.0% | -0.003 [-0.021, +0.014] | 0.335 |
+| 2. semantic_search: whole abstract for the first 3, 400 characters after; no keywords, categories, pdf_url | -1.3% | -20.1% | -0.008 [-0.027, +0.009] | 0.317 |
+| 3. + compact JSON text instead of indented | +4.8% | -21.3% | -0.010 [-0.033, +0.010] | 0.314 |
+| 4. + results after the first 3 as light records (first author, no journal or DOI) | +2.6% | -22.8% | -0.008 [-0.028, +0.010] | 0.311 |
+| 5. + tool schemas without pydantic's per-argument titles | +2.6% | **-24.6%** [-28.9%, -20.2%] | -0.004 [-0.022, +0.013] | 0.328 |
+| 6. + 250-character excerpts instead of 400 (declared the last) | +5.5% | -24.5% | -0.010 [-0.032, +0.008] | 0.304 |
+
+Baseline citedev MRR: 0.347. **No variant meets the criterion; all are reverted**, the server is unchanged.
+The best, variant 5, misses the cost threshold by less than half a point, with no measurable loss of
+accuracy; adopting it would be a decision taken after seeing the result, and is recorded as such here rather
+than made silently. What the measurements show:
+
+* **semantic_search produces most of what the agent reads**: 81% of the characters of tool results in the
+  baseline runs (about 18,000 per call, half of them abstracts), against 18% for search_literature.
+* **Characters are not tokens.** Physics abstracts tokenize at about 2.8 characters per token, and
+  whitespace is nearly free: removing JSON indentation cut 12% of the characters and 1.6% of the cost.
+* **A fixed part caps the saving.** Tools and instructions are about 5,000 tokens (4,300 without the
+  titles), written to the prompt cache once per conversation: about $0.0006, some 40% of the cost of a
+  famous-set question, which no change to results reaches.
+* **Less information is paid back in calls.** Shorter results did not lower the number of tool calls: from
+  variant 3 on the agent made a few percent more, and with 250-character excerpts the extra calls cancelled
+  the saving. On citedev, where the agent searches longest, every variant scored below the baseline
+  (0.304 to 0.335 against 0.347, none significant), consistent with the full abstracts helping there.
+
 ## Offline: fixed corpus of every INSPIRE record with 1500+ citations (1396 papers, famous set)
 
 | system | R@1 | R@10 | MRR@10 [95% CI] |
