@@ -2,7 +2,7 @@
 
 All notable changes. Versions follow [semantic versioning](https://semver.org).
 
-## Unreleased
+## 0.6.0
 
 * Experimental local semantic index for services, off by default (more targets among the candidates on
   the development sets, no gain on a fresh test set: docs/evaluation.md): `inspire-mcp index download DIR` installs a prebuilt one
