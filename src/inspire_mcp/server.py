@@ -528,7 +528,7 @@ def make_reranker(kind: str = "auto", model: str | None = None) -> Reranker:
 
 
 FULL_ABSTRACTS = 3  # semantic_search results in full; the agent reads these closely
-ABSTRACT_EXCERPT = 400  # characters of abstract for the later ones, enough to tell a near miss
+ABSTRACT_EXCERPT = 250  # characters of abstract for the later ones: the first sentence or two
 RANKED_DROP = ("keywords", "categories", "pdf_url")  # in get_paper; pdf_url follows from arxiv_id
 LATER_DROP = ("journal", "doi")  # also left out after the first results; get_paper has them
 
