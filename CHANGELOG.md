@@ -25,10 +25,15 @@ All notable changes. Versions follow [semantic versioning](https://semver.org).
   (`llm_rerank.py`). Training code for a physics cross-encoder in `train/`: the fine-tuned models
   beat the default on the development sets but not on the test sets, so the default is unchanged
   (docs/evaluation.md).
+* Tool output costs an assistant about a quarter less per question (Claude Haiku agent, development
+  questions: -24.6%, no measurable loss of accuracy): semantic_search returns the first 3 results in
+  full and later ones as light records (an abstract excerpt of up to 400 characters, first author and
+  author count), without keywords, categories or pdf_url (get_paper has them); results are compact JSON
+  instead of indented;
+  tool schemas no longer repeat each argument name as a title. The criterion fixed beforehand asked for
+  -25%; the change is adopted by decision, as docs/evaluation.md records.
 * Evaluation: `agent_eval.py --mcp` runs the agent on the real server in process, and
-  `compare_runs.py` compares groups of runs. Six attempts to make the tools cheaper for an assistant
-  (ranked results, shorter semantic_search results, compact JSON, smaller tool schemas) were measured
-  against a criterion fixed beforehand; none met it, so the tools are unchanged (docs/evaluation.md).
+  `compare_runs.py` compares groups of runs.
 
 ## 0.5.3
 

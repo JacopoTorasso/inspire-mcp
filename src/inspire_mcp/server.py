@@ -14,11 +14,11 @@ from contextlib import asynccontextmanager
 from datetime import date
 from functools import wraps
 from pathlib import Path
-from typing import Any, Literal, ParamSpec, TypeVar
+from typing import Any, Literal, ParamSpec, TypeVar, cast
 
 from mcp.server.mcpserver import MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
-from mcp.types import ToolAnnotations
+from mcp.types import CallToolResult, TextContent, ToolAnnotations
 from starlette.requests import Request
 from starlette.responses import JSONResponse, PlainTextResponse, Response
 
@@ -72,7 +72,8 @@ SortArg = Literal["mostrecent", "mostcited"] | None
 
 
 def _instrumented(metrics: Metrics) -> Callable[[Callable[P, Awaitable[R]]], Callable[P, Awaitable[R]]]:
-    """Record latency and outcome of every tool call; turn API failures into MCP tool errors."""
+    """Record latency and outcome of every tool call; turn API failures into MCP tool errors; send dict
+    results as compact JSON text (with the same structured content)."""
 
     def decorator(func: Callable[P, Awaitable[R]]) -> Callable[P, Awaitable[R]]:
         @wraps(func)
@@ -80,7 +81,14 @@ def _instrumented(metrics: Metrics) -> Callable[[Callable[P, Awaitable[R]]], Cal
             start = time.perf_counter()
             outcome = "ok"
             try:
-                return await func(*args, **kwargs)
+                result = await func(*args, **kwargs)
+                if isinstance(result, dict):
+                    # The SDK would render it with indent=2, about an eighth of the characters the model reads.
+                    text = json.dumps(result, ensure_ascii=False, separators=(",", ":"), default=str)
+                    return cast(
+                        R, CallToolResult(content=[TextContent(type="text", text=text)], structured_content=result)
+                    )
+                return result
             except InspireError as exc:
                 outcome = "upstream_error"
                 raise ToolError(str(exc)) from exc
@@ -218,13 +226,19 @@ def build_server(
                 half of the candidates then come from papers with 250+ citations. Leave false for recent
                 or niche work, which this would push out.
             compact: drop abstracts and author lists to save context.
+
+        The first results come in full, later ones with an abstract excerpt and the first author only:
+        get_paper has the rest.
         """
         reranker_ = await get_reranker()
         reload_if_updated()
         dense = dense_state.get("d")
         result = await _semantic(inspire, question, size, pool, reranker_, prefer_influential, dense)
         return {
-            "results": [{**p.to_dict(compact), "score": result.scores.get(p.recid)} for p in result.papers],
+            "results": [
+                {**_ranked_result(p, i, compact), "score": result.scores.get(p.recid)}
+                for i, p in enumerate(result.papers)
+            ],
             "retrieval": {
                 "inspire_query": result.inspire_query,
                 "strict_query_hits": result.strict_hits,
@@ -478,6 +492,8 @@ def build_server(
     async def prometheus(request: Request) -> Response:
         return PlainTextResponse(metrics.render(), media_type="text/plain; version=0.0.4")
 
+    for tool in server._tool_manager.list_tools():  # the SDK has no public hook for the listed schema
+        tool.parameters = _without_titles(tool.parameters)
     return server
 
 
@@ -509,6 +525,46 @@ def make_reranker(kind: str = "auto", model: str | None = None) -> Reranker:
         return CrossEncoderReranker(model)  # a model asked for by name must load, not silently fall back
     factories = {"bm25": BM25Reranker, "dense": DenseReranker, "cross-encoder": CrossEncoderReranker}
     return factories[kind]() if kind in factories else default_reranker()
+
+
+FULL_ABSTRACTS = 3  # semantic_search results in full; the agent reads these closely
+ABSTRACT_EXCERPT = 400  # characters of abstract for the later ones, enough to tell a near miss
+RANKED_DROP = ("keywords", "categories", "pdf_url")  # in get_paper; pdf_url follows from arxiv_id
+LATER_DROP = ("journal", "doi")  # also left out after the first results; get_paper has them
+
+
+def _without_titles(schema: Any) -> Any:
+    """Drop the "title" pydantic gives every argument ("Size" for size) and every argument model: they
+    repeat the names, and in the tool list a model reads with each question they were 14% of its tokens.
+    Only string values are titles; a property named "title" maps to a schema, so it is kept."""
+    if isinstance(schema, dict):
+        return {k: _without_titles(v) for k, v in schema.items() if not (k == "title" and isinstance(v, str))}
+    if isinstance(schema, list):
+        return [_without_titles(v) for v in schema]
+    return schema
+
+
+def _ranked_result(paper: Paper, rank: int, compact: bool) -> dict[str, Any]:
+    """A semantic_search result. Its tokens are read again on every later turn of the agent, so the first
+    results come whole (bar fields get_paper also returns) and later ones as a light record: an abstract
+    excerpt, the first author and author count, title, year, identifiers and citations."""
+    data = paper.to_dict(compact)
+    if compact:
+        return data
+    for key in RANKED_DROP:
+        data.pop(key, None)
+    if rank < FULL_ABSTRACTS:
+        return data
+    for key in LATER_DROP:
+        data.pop(key, None)
+    data["authors"] = data["authors"][:1]
+    if not data["collaborations"]:
+        del data["collaborations"]
+    abstract = data.get("abstract")
+    if abstract and len(abstract) > ABSTRACT_EXCERPT:
+        cut = abstract.rfind(" ", 0, ABSTRACT_EXCERPT)
+        data["abstract"] = abstract[: cut if cut > 0 else ABSTRACT_EXCERPT] + " …"
+    return data
 
 
 def _paging(total: int, page: int, size: int) -> dict[str, Any]:

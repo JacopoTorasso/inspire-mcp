@@ -1,3 +1,5 @@
+import json
+
 import httpx
 import respx
 from mcp import Client
@@ -176,3 +178,44 @@ async def test_search_pagination_and_compact_results():
     assert "abstract" not in sc["results"][0] and sc["results"][0]["citation_count"] == 17848
     assert last.structured_content["has_more"] is False and last.structured_content["next_page"] is None
     assert route.calls.last.request.url.params["page"] == "3"
+
+
+def test_semantic_results_keep_full_abstracts_only_at_the_top():
+    from inspire_mcp.client import Paper
+    from inspire_mcp.server import ABSTRACT_EXCERPT, FULL_ABSTRACTS, _ranked_result
+
+    long = "word " * 200
+    paper = Paper(1, "t", long, ["A, B", "C, D"], 2, [], 2020, "J", "2001.00001", "d", 5, ["Th"], "u", ["k"], "p")
+    top = _ranked_result(paper, FULL_ABSTRACTS - 1, compact=False)
+    later = _ranked_result(paper, FULL_ABSTRACTS, compact=False)
+    assert top["abstract"] == long and top["authors"] == ["A, B", "C, D"] and top["doi"] == "d"
+    assert later["authors"] == ["A, B"] and later["author_count"] == 2 and later["arxiv_id"] == "2001.00001"
+    assert not {"journal", "doi", "collaborations"} & later.keys()
+    assert later["abstract"].endswith(" …") and len(later["abstract"]) <= ABSTRACT_EXCERPT + 2
+    assert not {"keywords", "categories", "pdf_url"} & (top.keys() | later.keys()) and later["url"] == "u"
+    assert "abstract" not in _ranked_result(paper, 0, compact=True)
+
+
+@respx.mock
+async def test_tool_results_are_compact_json_with_the_same_structured_content():
+    respx.get(f"{BASE_URL}/literature").mock(return_value=httpx.Response(200, json=hits(ATLAS_HIGGS)))
+    async with Client(server()) as client:
+        result = await client.call_tool("search_literature", {"query": "higgs"})
+    text = result.content[0].text
+    assert "\n" not in text and ", " not in text.split('"abstract"')[0]
+    assert json.loads(text) == result.structured_content and result.structured_content["total"] == 1
+
+
+async def test_listed_tool_schemas_carry_no_pydantic_titles():
+    from inspire_mcp.server import _without_titles
+
+    async with Client(server()) as client:
+        tools = (await client.list_tools()).tools
+    assert all('"title"' not in json.dumps(t.input_schema) for t in tools)
+    semantic = next(t for t in tools if t.name == "semantic_search")
+    assert (
+        semantic.input_schema["required"] == ["question"]
+        and semantic.input_schema["properties"]["size"]["default"] == 10
+    )
+    kept = {"properties": {"title": {"title": "Title", "type": "string"}}, "title": "fArguments"}
+    assert _without_titles(kept) == {"properties": {"title": {"type": "string"}}}

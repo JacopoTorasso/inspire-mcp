@@ -255,10 +255,12 @@ compared with the baseline; variants 3 to 6 build on the one before.
 | 5. + tool schemas without pydantic's per-argument titles | +2.6% | **-24.6%** [-28.9%, -20.2%] | -0.004 [-0.022, +0.013] | 0.328 |
 | 6. + 250-character excerpts instead of 400 (declared the last) | +5.5% | -24.5% | -0.010 [-0.032, +0.008] | 0.304 |
 
-Baseline citedev MRR: 0.347. **No variant meets the criterion; all are reverted**, the server is unchanged.
-The best, variant 5, misses the cost threshold by less than half a point, with no measurable loss of
-accuracy; adopting it would be a decision taken after seeing the result, and is recorded as such here rather
-than made silently. What the measurements show:
+Baseline citedev MRR: 0.347. **No variant meets the criterion.** The best, variant 5, misses the cost
+threshold by less than half a point, with no measurable loss of accuracy (the MRR interval stays within the
+allowed 0.03). **Variant 5 is adopted (27/11/2026) by a decision taken after seeing the result**, not by the
+criterion: a quarter less cost per question for an assistant, nothing measurable lost. Variant 6 is not
+adopted. On citedev every variant scored below the baseline (not significant), so that set is the one to
+watch. What the measurements show:
 
 * **semantic_search produces most of what the agent reads**: 81% of the characters of tool results in the
   baseline runs (about 18,000 per call, half of them abstracts), against 18% for search_literature.
