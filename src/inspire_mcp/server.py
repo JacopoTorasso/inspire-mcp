@@ -14,11 +14,11 @@ from contextlib import asynccontextmanager
 from datetime import date
 from functools import wraps
 from pathlib import Path
-from typing import Any, Literal, ParamSpec, TypeVar
+from typing import Any, Literal, ParamSpec, TypeVar, cast
 
 from mcp.server.mcpserver import MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
-from mcp.types import ToolAnnotations
+from mcp.types import CallToolResult, TextContent, ToolAnnotations
 from starlette.requests import Request
 from starlette.responses import JSONResponse, PlainTextResponse, Response
 
@@ -72,7 +72,8 @@ SortArg = Literal["mostrecent", "mostcited"] | None
 
 
 def _instrumented(metrics: Metrics) -> Callable[[Callable[P, Awaitable[R]]], Callable[P, Awaitable[R]]]:
-    """Record latency and outcome of every tool call; turn API failures into MCP tool errors."""
+    """Record latency and outcome of every tool call; turn API failures into MCP tool errors; send dict
+    results as compact JSON text (with the same structured content)."""
 
     def decorator(func: Callable[P, Awaitable[R]]) -> Callable[P, Awaitable[R]]:
         @wraps(func)
@@ -80,7 +81,14 @@ def _instrumented(metrics: Metrics) -> Callable[[Callable[P, Awaitable[R]]], Cal
             start = time.perf_counter()
             outcome = "ok"
             try:
-                return await func(*args, **kwargs)
+                result = await func(*args, **kwargs)
+                if isinstance(result, dict):
+                    # The SDK would render it with indent=2, about an eighth of the characters the model reads.
+                    text = json.dumps(result, ensure_ascii=False, separators=(",", ":"), default=str)
+                    return cast(
+                        R, CallToolResult(content=[TextContent(type="text", text=text)], structured_content=result)
+                    )
+                return result
             except InspireError as exc:
                 outcome = "upstream_error"
                 raise ToolError(str(exc)) from exc

@@ -1,3 +1,5 @@
+import json
+
 import httpx
 import respx
 from mcp import Client
@@ -190,3 +192,13 @@ def test_semantic_results_keep_full_abstracts_only_at_the_top():
     assert later["abstract"].endswith(" …") and len(later["abstract"]) <= ABSTRACT_EXCERPT + 2
     assert not {"keywords", "categories", "pdf_url"} & (top.keys() | later.keys()) and later["url"] == "u"
     assert "abstract" not in _ranked_result(paper, 0, compact=True)
+
+
+@respx.mock
+async def test_tool_results_are_compact_json_with_the_same_structured_content():
+    respx.get(f"{BASE_URL}/literature").mock(return_value=httpx.Response(200, json=hits(ATLAS_HIGGS)))
+    async with Client(server()) as client:
+        result = await client.call_tool("search_literature", {"query": "higgs"})
+    text = result.content[0].text
+    assert "\n" not in text and ", " not in text.split('"abstract"')[0]
+    assert json.loads(text) == result.structured_content and result.structured_content["total"] == 1
