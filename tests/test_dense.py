@@ -189,14 +189,16 @@ async def test_server_reloads_the_dense_index_when_the_file_changes(tmp_path, mo
 
 def test_download_installs_a_checked_index_and_refuses_a_corrupted_one(tmp_path, monkeypatch):
     import json
-
-    import huggingface_hub
+    import sys
+    import types
 
     import inspire_mcp.dense as dense
 
     remote = tmp_path / "remote"
     dense.save(remote, np.array([7, 8]), np.eye(2), "BAAI/bge-small-en-v1.5", "2026-11-01")
-    monkeypatch.setattr(huggingface_hub, "hf_hub_download", lambda repo, name, **kw: str(remote / name))
+    # A stand-in module: huggingface_hub comes with the semantic extra, which CI does not install.
+    hub = types.SimpleNamespace(hf_hub_download=lambda repo, name, **kw: str(remote / name))
+    monkeypatch.setitem(sys.modules, "huggingface_hub", hub)
     meta = dense.download(tmp_path / "local", repo="someone/index")
     assert meta["records"] == 2 and (tmp_path / "local" / "index.npz").exists()
     assert dense.DenseIndex(tmp_path / "local", embedder=FakeEmbedder()).records == 2
