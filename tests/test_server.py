@@ -185,10 +185,12 @@ def test_semantic_results_keep_full_abstracts_only_at_the_top():
     from inspire_mcp.server import ABSTRACT_EXCERPT, FULL_ABSTRACTS, _ranked_result
 
     long = "word " * 200
-    paper = Paper(1, "t", long, ["A, B"], 1, [], 2020, None, "2001.00001", None, 5, ["Theory-HEP"], "u", ["k"], "p")
+    paper = Paper(1, "t", long, ["A, B", "C, D"], 2, [], 2020, "J", "2001.00001", "d", 5, ["Th"], "u", ["k"], "p")
     top = _ranked_result(paper, FULL_ABSTRACTS - 1, compact=False)
     later = _ranked_result(paper, FULL_ABSTRACTS, compact=False)
-    assert top["abstract"] == long and top["authors"] == ["A, B"] and top["arxiv_id"] == "2001.00001"
+    assert top["abstract"] == long and top["authors"] == ["A, B", "C, D"] and top["doi"] == "d"
+    assert later["authors"] == ["A, B"] and later["author_count"] == 2 and later["arxiv_id"] == "2001.00001"
+    assert not {"journal", "doi", "collaborations"} & later.keys()
     assert later["abstract"].endswith(" …") and len(later["abstract"]) <= ABSTRACT_EXCERPT + 2
     assert not {"keywords", "categories", "pdf_url"} & (top.keys() | later.keys()) and later["url"] == "u"
     assert "abstract" not in _ranked_result(paper, 0, compact=True)

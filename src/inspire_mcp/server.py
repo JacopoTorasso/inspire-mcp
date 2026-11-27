@@ -227,7 +227,8 @@ def build_server(
                 or niche work, which this would push out.
             compact: drop abstracts and author lists to save context.
 
-        The first results carry the full abstract, later ones an excerpt: get_paper has the rest.
+        The first results come in full, later ones with an abstract excerpt and the first author only:
+        get_paper has the rest.
         """
         reranker_ = await get_reranker()
         reload_if_updated()
@@ -524,21 +525,30 @@ def make_reranker(kind: str = "auto", model: str | None = None) -> Reranker:
     return factories[kind]() if kind in factories else default_reranker()
 
 
-FULL_ABSTRACTS = 3  # semantic_search results with the whole abstract; the agent reads these closely
+FULL_ABSTRACTS = 3  # semantic_search results in full; the agent reads these closely
 ABSTRACT_EXCERPT = 400  # characters of abstract for the later ones, enough to tell a near miss
 RANKED_DROP = ("keywords", "categories", "pdf_url")  # in get_paper; pdf_url follows from arxiv_id
+LATER_DROP = ("journal", "doi")  # also left out after the first results; get_paper has them
 
 
 def _ranked_result(paper: Paper, rank: int, compact: bool) -> dict[str, Any]:
-    """A semantic_search result: most of its tokens are abstracts, read again on every later turn of the
-    agent, so only the top ones keep the whole text and fields get_paper also returns are left out."""
+    """A semantic_search result. Its tokens are read again on every later turn of the agent, so the first
+    results come whole (bar fields get_paper also returns) and later ones as a light record: an abstract
+    excerpt, the first author and author count, title, year, identifiers and citations."""
     data = paper.to_dict(compact)
     if compact:
         return data
     for key in RANKED_DROP:
         data.pop(key, None)
+    if rank < FULL_ABSTRACTS:
+        return data
+    for key in LATER_DROP:
+        data.pop(key, None)
+    data["authors"] = data["authors"][:1]
+    if not data["collaborations"]:
+        del data["collaborations"]
     abstract = data.get("abstract")
-    if rank >= FULL_ABSTRACTS and abstract and len(abstract) > ABSTRACT_EXCERPT:
+    if abstract and len(abstract) > ABSTRACT_EXCERPT:
         cut = abstract.rfind(" ", 0, ABSTRACT_EXCERPT)
         data["abstract"] = abstract[: cut if cut > 0 else ABSTRACT_EXCERPT] + " …"
     return data
